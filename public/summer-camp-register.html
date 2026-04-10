@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Summer Camp Registration - Fluent Feathers Academy By Aaliya</title>
+  <link rel="icon" type="image/x-icon" id="favicon" href="/app-icon.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #B05D9E 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    .logo {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .logo img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 3px solid white;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    .logo h1 {
+      color: white;
+      font-size: 24px;
+      margin-top: 10px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    .demo-header {
+      text-align: center;
+      margin-bottom: 25px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+    .demo-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #B05D9E 0%, #764ba2 100%);
+      color: white;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .demo-title {
+      font-size: 24px;
+      color: #2d3748;
+      margin-bottom: 15px;
+      line-height: 1.3;
+    }
+    .demo-description {
+      background: #f7fafc;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 20px 0;
+      font-size: 14px;
+      color: #4a5568;
+      line-height: 1.6;
+      text-align: center;
+    }
+    .demo-highlights {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+    .demo-highlight {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #f7fafc;
+      padding: 8px 15px;
+      border-radius: 10px;
+      font-size: 13px;
+      color: #4a5568;
+    }
+    .demo-highlight span {
+      font-size: 16px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      color: #4a5568;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    .form-group label .required {
+      color: #e53e3e;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 16px;
+      transition: all 0.2s;
+      background: white;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: #B05D9E;
+      box-shadow: 0 0 0 3px rgba(176, 93, 158, 0.1);
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #B05D9E 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 15px rgba(176, 93, 158, 0.4);
+    }
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(176, 93, 158, 0.5);
+    }
+    .submit-btn:disabled {
+      background: #a0aec0;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    .success-message {
+      text-align: center;
+      padding: 30px;
+    }
+    .success-message .icon {
+      font-size: 60px;
+      margin-bottom: 20px;
+    }
+    .success-message h2 {
+      color: #38a169;
+      margin-bottom: 15px;
+    }
+    .success-message p {
+      color: #4a5568;
+      line-height: 1.6;
+    }
+    .error-message {
+      background: #fed7d7;
+      color: #c53030;
+      padding: 12px 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      text-align: center;
+    }
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: white;
+    }
+    .loading .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      color: rgba(255,255,255,0.8);
+      font-size: 14px;
+    }
+    .footer a {
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <img id="brandLogo" src="/app-icon.png" alt="Fluent Feathers Academy By Aaliya">
+      <h1>Fluent Feathers Academy By Aaliya</h1>
+    </div>
+
+    <div id="content">
+      <div class="card">
+        <div class="demo-header">
+          <div class="demo-badge">SUMMER CAMP</div>
+          <h2 class="demo-title">Register for Summer Camp</h2>
+          <div class="demo-highlights">
+            <div class="demo-highlight"><span>☀️</span> Fun Summer Activities</div>
+            <div class="demo-highlight"><span>👩‍🏫</span> Expert Teachers</div>
+            <div class="demo-highlight"><span>🌟</span> Interactive Learning</div>
+          </div>
+        </div>
+
+        <div class="demo-description">
+          Join our exciting <strong>Summer Camp</strong> at Fluent Feathers Academy! A perfect opportunity for your child to learn and have fun during the summer break.
+        </div>
+
+        <div id="errorMsg" class="error-message" style="display: none;"></div>
+
+        <form id="registerForm" onsubmit="handleSubmit(event)">
+          <div class="form-group">
+            <label>Child's Name <span class="required">*</span></label>
+            <input type="text" id="childName" placeholder="Enter child's name" required>
+          </div>
+
+          <div class="form-group">
+            <label>Child's Age <span class="required">*</span></label>
+            <input type="text" id="childAge" placeholder="e.g., 5 years or Grade 2" required>
+          </div>
+
+          <div class="form-group">
+            <label>Parent/Guardian Name <span class="required">*</span></label>
+            <input type="text" id="parentName" placeholder="Enter your name" required>
+          </div>
+
+          <div class="form-group">
+            <label>Email <span class="required">*</span></label>
+            <input type="email" id="email" placeholder="your@email.com" required>
+          </div>
+
+          <div class="form-group">
+            <label>Phone/WhatsApp <span class="required">*</span></label>
+            <input type="tel" id="phone" placeholder="+91 98765 43210" required>
+          </div>
+
+          <div class="form-group">
+            <label>Timezone <span class="required">*</span></label>
+            <select id="timezone" required></select>
+          </div>
+
+          <button type="submit" class="submit-btn" id="submitBtn">
+            Register for Summer Camp
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>By <a href="https://www.instagram.com/fluentfeathersbyaaliya" target="_blank">@fluentfeathersbyaaliya</a></p>
+    </div>
+  </div>
+
+  <script>
+    function showSuccess() {
+      document.getElementById('content').innerHTML = `
+        <div class="card">
+          <div class="success-message">
+            <div class="icon">🎉</div>
+            <h2>Registration Successful!</h2>
+            <p>Thank you for registering for <strong>Summer Camp</strong> at Fluent Feathers Academy!</p>
+            <p style="margin-top: 15px;">We'll contact you shortly with more details.</p>
+            <p style="margin-top: 10px;">A confirmation email has been sent to your inbox.</p>
+            <p style="margin-top: 20px; font-size: 13px; color: #718096;">Please check your spam folder if you don't see it.</p>
+          </div>
+        </div>
+      `;
+    }
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+
+      const btn = document.getElementById('submitBtn');
+      const errorDiv = document.getElementById('errorMsg');
+      btn.disabled = true;
+      btn.textContent = 'Registering...';
+      errorDiv.style.display = 'none';
+
+      const data = {
+        child_name: document.getElementById('childName').value.trim(),
+        child_age: document.getElementById('childAge').value.trim(),
+        parent_name: document.getElementById('parentName').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        timezone: document.getElementById('timezone').value
+      };
+
+      try {
+        const res = await fetch('/api/public/summer-camp-register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (res.ok) {
+          showSuccess();
+        } else {
+          errorDiv.textContent = result.error || 'Registration failed. Please try again.';
+          errorDiv.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Register for Summer Camp';
+        }
+      } catch (err) {
+        errorDiv.textContent = 'Network error. Please check your connection and try again.';
+        errorDiv.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Register for Summer Camp';
+      }
+    }
+
+    // Load logo from config
+    function buildTimezoneOptions(selectedTimezone) {
+      const fallback = [
+        'Asia/Kolkata', 'Europe/Berlin', 'Asia/Dhaka', 'Asia/Dubai', 'Asia/Muscat',
+        'Asia/Karachi', 'Asia/Kuwait', 'Asia/Hong_Kong', 'Europe/London',
+        'America/New_York', 'America/Los_Angeles', 'Australia/Sydney'
+      ];
+
+      let zones = fallback;
+      if (typeof Intl !== 'undefined' && typeof Intl.supportedValuesOf === 'function') {
+        try {
+          const supported = Intl.supportedValuesOf('timeZone');
+          if (Array.isArray(supported) && supported.length > 0) zones = supported;
+        } catch (e) {}
+      }
+
+      const areaLabels = {
+        Africa: 'Africa',
+        America: 'Americas',
+        Antarctica: 'Antarctica',
+        Arctic: 'Arctic',
+        Asia: 'Asia',
+        Atlantic: 'Atlantic',
+        Australia: 'Australia',
+        Europe: 'Europe',
+        Indian: 'Indian Ocean',
+        Pacific: 'Pacific'
+      };
+
+      return zones
+        .map((zone) => {
+          const parts = zone.split('/');
+          const area = areaLabels[parts[0]] || parts[0] || 'Other';
+          const city = parts.slice(1).join('/').replace(/_/g, ' ') || zone;
+          return { zone, label: `${area} - ${city} (${zone})` };
+        })
+        .sort((a, b) => a.label.localeCompare(b.label))
+        .map((item) => `<option value="${item.zone}" ${item.zone === selectedTimezone ? 'selected' : ''}>${item.label}</option>`)
+        .join('');
+    }
+
+    function initTimezoneSelector() {
+      const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
+      const timezoneSelect = document.getElementById('timezone');
+      if (!timezoneSelect) return;
+
+      timezoneSelect.innerHTML = buildTimezoneOptions(browserTimezone);
+    }
+
+    async function loadConfig() {
+      try {
+        const res = await fetch('/api/config');
+        const config = await res.json();
+        if (config.logoUrl) {
+          const logo = document.getElementById('brandLogo');
+          if (logo) logo.src = config.logoUrl;
+          const favicon = document.getElementById('favicon');
+          if (favicon) favicon.href = config.logoUrl;
+        }
+      } catch (e) {}
+    }
+
+    initTimezoneSelector();
+    loadConfig();
+  </script>
+</body>
+</html>

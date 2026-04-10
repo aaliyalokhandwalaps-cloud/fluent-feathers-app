@@ -1,0 +1,998 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>&#x2B50; Class Points</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f3eeff; color: #2d1245; font-size: 13px; }
+
+.hdr {
+  background: linear-gradient(135deg, #B05D9E 0%, #764ba2 100%);
+  padding: 11px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 50;
+  box-shadow: 0 2px 10px rgba(176,93,158,0.35);
+}
+.hdr-title { font-size: 15px; font-weight: 800; color: #fff; }
+
+.body { padding: 12px; }
+
+.tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.tab {
+  flex: 1; padding: 8px; border-radius: 8px; border: 1.5px solid #c084e8;
+  background: #ede0ff; color: #7c3aad; font-size: 12px; font-weight: 700;
+  text-align: center; cursor: pointer; transition: all 0.15s;
+}
+.tab.on { background: #B05D9E; border-color: #B05D9E; color: #fff; }
+
+.lbl { font-size: 11px; font-weight: 700; color: #7c3aad; margin-bottom: 4px; }
+select {
+  width: 100%; background: #ede0ff; border: 1.5px solid #c084e8;
+  color: #2d1245; padding: 9px 10px; border-radius: 8px; font-size: 12px;
+  outline: none; cursor: pointer; margin-bottom: 10px;
+}
+select:focus { border-color: #B05D9E; }
+select option { background: #ede0ff; color: #2d1245; }
+
+.s-list { display: flex; flex-direction: column; gap: 8px; }
+
+.s-card {
+  background: #fff; border: 1.5px solid #e0cffa;
+  border-radius: 10px; padding: 14px 16px;
+  display: flex; align-items: center; gap: 14px;
+  box-shadow: 0 1px 4px rgba(176,93,158,0.08);
+}
+.s-card.flash-g { animation: fg 0.5s; }
+.s-card.flash-r { animation: fr 0.5s; }
+@keyframes fg { 0%,100%{background:#fff} 40%{background:#d1fae5;border-color:#34d399} }
+@keyframes fr { 0%,100%{background:#fff} 40%{background:#fee2e2;border-color:#f87171} }
+
+.av {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, #B05D9E 0%, #764ba2 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 900; color: #fff;
+}
+.s-name { flex: 1; font-size: 13px; font-weight: 700; }
+.s-pts {
+  font-size: 22px; font-weight: 900; color: #b45309;
+  min-width: 52px; text-align: center; flex-shrink: 0;
+  background: #fef3c7; border-radius: 8px; padding: 4px 10px;
+}
+
+.btn-row { display: flex; gap: 4px; flex-shrink: 0; }
+.pb {
+  border: none; border-radius: 7px; padding: 6px 9px;
+  cursor: pointer; font-size: 11px; font-weight: 800;
+  transition: transform 0.1s;
+}
+.pb:active { transform: scale(0.88); }
+.pb.p1 { background: #d1fae5; color: #065f46; border: 1.5px solid #34d399; }
+.pb.p5 { background: #fef3c7; color: #92400e; border: 1.5px solid #f59e0b; }
+.pb.m1 { background: #fee2e2; color: #991b1b; border: 1.5px solid #f87171; }
+
+.empty { text-align: center; padding: 30px 14px; color: #c084e8; font-size: 12px; }
+
+#toast {
+  position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+  background: #2d1245; color: #fff;
+  padding: 7px 18px; border-radius: 20px; font-size: 12px;
+  opacity: 0; transition: opacity 0.3s; z-index: 999;
+  white-space: nowrap; pointer-events: none;
+}
+#toast.show { opacity: 1; }
+
+.s-name { flex: 1; font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.badge-wrap { position: relative; flex-shrink: 0; }
+.badge-count-btn {
+  border: 1.5px solid #c9a227; background: linear-gradient(135deg, #fff8dc 0%, #fde97a 100%); border-radius: 8px;
+  padding: 4px 10px; cursor: pointer; font-size: 22px; line-height: 1.4;
+  color: #7a5c00; font-weight: 900; transition: transform 0.1s;
+  white-space: nowrap; box-shadow: 0 1px 3px rgba(201,162,39,0.25);
+}
+.badge-count-btn:active { transform: scale(0.88); }
+.badge-menu {
+  position: absolute; left: 0; top: calc(100% + 4px); z-index: 300;
+  background: #fff; border: 1.5px solid #c084e8; border-radius: 10px;
+  box-shadow: 0 4px 18px rgba(176,93,158,0.22);
+  min-width: 190px; padding: 4px 0; display: none;
+}
+.badge-opt {
+  padding: 8px 13px; font-size: 11.5px; cursor: pointer; color: #2d1245;
+  display: flex; align-items: center; gap: 7px; transition: background 0.1s;
+}
+.badge-opt:hover { background: #ede0ff; }
+.badge-opt .bo-emoji { font-size: 14px; }
+
+/* Float button */
+#btn-float {
+  background: rgba(255,255,255,0.18);
+  border: 1.5px solid rgba(255,255,255,0.45);
+  border-radius: 7px;
+  padding: 5px 10px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#btn-float:hover { background: rgba(255,255,255,0.32); }
+
+#btn-pip {
+  background: rgba(255,255,255,0.18);
+  border: 1.5px solid rgba(255,255,255,0.45);
+  border-radius: 7px;
+  padding: 5px 10px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#btn-pip:hover { background: rgba(255,255,255,0.32); }
+
+/* Float / compact popup mode */
+body.float-mode .tabs { display: none; }
+body.float-mode #pane-student,
+body.float-mode #pane-group { display: none !important; }
+body.float-mode .body { padding: 8px 10px; }
+body.float-mode .s-card { padding: 8px 10px; }
+body.float-mode .av { width: 28px; height: 28px; font-size: 13px; }
+body.float-mode .s-pts { font-size: 18px; }
+body.float-mode .pb { padding: 5px 7px; font-size: 10px; }
+
+/* Pin-on-top button (float mode only) */
+#btn-pin {
+  background: rgba(255,255,255,0.18);
+  border: 1.5px solid rgba(255,255,255,0.45);
+  border-radius: 7px;
+  padding: 5px 10px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: none;        /* shown only in float mode via JS */
+}
+#btn-pin.pinned {
+  background: rgba(255,255,255,0.45);
+  border-color: #fff;
+  color: #2d1245;
+}
+
+/* ── Zoom Share Mode ── */
+#btn-zoom {
+  background: rgba(255,255,255,0.18);
+  border: 1.5px solid rgba(255,255,255,0.45);
+  border-radius: 7px;
+  padding: 5px 10px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#btn-zoom:hover { background: rgba(255,255,255,0.32); }
+#btn-zoom.active { background: rgba(239,68,68,0.55); border-color: #fca5a5; }
+
+/* Zoom Share — fullscreen video with floating points overlay */
+#zoom-overlay {
+  position: fixed; inset: 0; z-index: 9999; background: #000;
+}
+.zo-vid {
+  width: 100%; height: 100%; object-fit: contain; display: block;
+}
+
+/* Draggable points panel — floats top-left like in the screenshot */
+.zo-panel {
+  position: absolute; top: 18px; left: 18px;
+  width: 310px;
+  background: #f3eeff;
+  border-radius: 14px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.45);
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  z-index: 10;
+}
+.zo-panel:active { cursor: grabbing; }
+.zo-title {
+  background: linear-gradient(135deg, #B05D9E 0%, #764ba2 100%);
+  color: #fff; font-size: 14px; font-weight: 800;
+  padding: 10px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: grab;
+}
+.zo-title:active { cursor: grabbing; }
+.zo-hide-btn {
+  background: rgba(255,255,255,0.2); border: 1.5px solid rgba(255,255,255,0.45);
+  border-radius: 6px; padding: 3px 9px; color: #fff;
+  font-size: 11px; font-weight: 800; cursor: pointer;
+}
+.zo-hide-btn:hover { background: rgba(255,255,255,0.38); }
+#zo-cards { padding: 6px 0 4px; }
+body.zo-hidden #zo-cards { display: none; }
+.zo-card {
+  background: #fff; border: 1.5px solid #e0cffa; border-radius: 10px;
+  padding: 9px 11px; margin: 6px 10px;
+  display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 1px 4px rgba(176,93,158,0.08);
+}
+.zo-card.flash-g { animation: fg 0.5s; }
+.zo-card.flash-r { animation: fr 0.5s; }
+.zo-av {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, #B05D9E 0%, #764ba2 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 900; color: #fff;
+}
+.zo-name {
+  flex: 1; font-size: 13px; font-weight: 700; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.zo-pts {
+  font-size: 18px; font-weight: 900; color: #b45309;
+  background: #fef3c7; border-radius: 8px; padding: 2px 8px;
+  min-width: 36px; text-align: center;
+}
+.zo-btns { display: flex; gap: 3px; flex-shrink: 0; }
+
+/* Stop button bottom-right */
+.zo-stop {
+  position: absolute; bottom: 14px; right: 18px;
+  background: rgba(220,38,38,0.88); color: #fff; border: none;
+  border-radius: 8px; padding: 8px 20px; font-size: 13px; font-weight: 800;
+  cursor: pointer; white-space: nowrap; z-index: 10; transition: background 0.15s;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+}
+.zo-stop:hover { background: #dc2626; }
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-title">&#x2B50; Class Points</div>
+  <button id="btn-pin" title="Keep this window on top while you work in Canva">&#x1F4CC; Pin</button>
+  <button id="btn-present" onclick="window.open('/present.html','_blank')" style="background:rgba(255,255,255,0.18);border:1.5px solid rgba(255,255,255,0.45);border-radius:7px;padding:5px 10px;color:#fff;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;flex-shrink:0;" title="Open Present Mode — Canva + Points side by side, share one tab in Zoom">&#x1F3A8; Present</button>
+</div>
+
+<div class="body">
+  <div class="tabs">
+    <div class="tab on" id="tab-s" onclick="switchTab('student')">&#x1F464; Student</div>
+    <div class="tab"    id="tab-g" onclick="switchTab('group')">&#x1F465; Group</div>
+  </div>
+
+  <div id="pane-student">
+    <div class="lbl">Choose Student</div>
+    <select id="sel-student" onchange="onStudentChange()">
+      <option value="">-- loading... --</option>
+    </select>
+  </div>
+
+  <div id="pane-group" style="display:none;">
+    <div class="lbl">Choose Group</div>
+    <select id="sel-group" onchange="onGroupChange()">
+      <option value="">-- loading... --</option>
+    </select>
+  </div>
+
+  <div id="s-list" class="s-list">
+    <div class="empty">Select a student or group above</div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+var _ctx = null;
+function ac() {
+  if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
+  return _ctx;
+}
+
+function playSound(positive) {
+  try {
+    var ctx = ac();
+    function go() {
+      if (positive) {
+        // ✅ Ascending chime arpeggio (C5→G6)
+        var now = ctx.currentTime;
+        [523, 659, 784, 880, 1047, 1319, 1568].forEach(function(f, i) {
+          var o = ctx.createOscillator(), g = ctx.createGain();
+          o.connect(g); g.connect(ctx.destination);
+          o.type = 'sine'; o.frequency.value = f;
+          var t = now + i * 0.07;
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(0.32, t + 0.018);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+          o.start(t); o.stop(t + 0.55);
+        });
+
+      } else {
+        // ❌ Deduct sound: low thud drop
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(220, ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(110, ctx.currentTime + 0.22);
+        g.gain.setValueAtTime(0.28, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
+        o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.3);
+      }
+    }
+    ctx.state === 'suspended' ? ctx.resume().then(go) : go();
+  } catch(e) {}
+}
+function badgeFanfare() {
+  try {
+    var ctx = ac();
+    function go() {
+      [523,659,784,1047].forEach(function(f, i) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine'; o.frequency.value = f;
+        var t = ctx.currentTime + i * 0.13;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.3, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+        o.start(t); o.stop(t + 0.4);
+      });
+    }
+    ctx.state === 'suspended' ? ctx.resume().then(go) : go();
+  } catch(e) {}
+}
+
+var allStudents = [];
+var allGroups   = [];
+var students    = [];
+var _pipWin     = null;
+var _pipSyncInt = null;
+
+var CLASS_BADGES = [
+  // ── Public Speaking ──
+  { emoji: '🎤', name: 'Confident Speaker',      desc: 'Spoke with confidence in class' },
+  { emoji: '🎙️', name: 'Impromptu Speaker',      desc: 'Gave an impressive impromptu speech' },
+  { emoji: '📢', name: 'Clear Communicator',     desc: 'Communicated ideas clearly and fluently' },
+  { emoji: '🎭', name: 'Story Teller',            desc: 'Told a story with great expression' },
+  { emoji: '🏆', name: 'Debate Champion',         desc: 'Argued a point brilliantly' },
+  // ── Creative Writing ──
+  { emoji: '✍️', name: 'Creative Writer',         desc: 'Showed excellent creative writing skills' },
+  { emoji: '📖', name: 'Story Builder',           desc: 'Built a well-structured story' },
+  { emoji: '🌟', name: 'Poetry Star',             desc: 'Wrote a wonderful poem' },
+  { emoji: '💬', name: 'Dialogue Master',         desc: 'Wrote natural and engaging dialogue' },
+  // ── Grammar ──
+  { emoji: '📐', name: 'Grammar Guru',            desc: 'Used grammar correctly throughout' },
+  { emoji: '✏️', name: 'Punctuation Pro',         desc: 'Used punctuation perfectly' },
+  { emoji: '🔤', name: 'Sentence Superstar',      desc: 'Wrote excellent sentence structures' },
+  { emoji: '🧩', name: 'Tense Master',            desc: 'Used verb tenses correctly' },
+  // ── Vocabulary ──
+  { emoji: '📚', name: 'Vocabulary Star',         desc: 'Used impressive new vocabulary words' },
+  { emoji: '🔍', name: 'Word Explorer',           desc: 'Explored and used new words confidently' },
+  { emoji: '💡', name: 'Synonym Superstar',       desc: 'Used varied and rich synonyms' },
+  // ── Handwriting ──
+  { emoji: '📝', name: 'Neat Handwriting',        desc: 'Showed neat and tidy handwriting' },
+  { emoji: '🖊️', name: 'Handwriting Hero',        desc: 'Exceptional handwriting today' },
+  // ── Spelling ──
+  { emoji: '🐝', name: 'Spelling Bee',            desc: 'Spelled all words correctly' },
+  { emoji: '🏅', name: 'Spelling Champion',       desc: 'Outstanding spelling performance' },
+  { emoji: '🎯', name: 'Zero Mistakes',           desc: 'Zero spelling errors — perfect score!' },
+  // ── Reading ──
+  { emoji: '📗', name: 'Fluent Reader',           desc: 'Read aloud fluently and clearly' },
+  { emoji: '🔖', name: 'Bookworm',                desc: 'Showed a love for reading' },
+  { emoji: '🧠', name: 'Reading Comprehension',   desc: 'Understood the text deeply' },
+  // ── General ──
+  { emoji: '⭐', name: 'Star Student',            desc: 'Outstanding performance today' },
+  { emoji: '👂', name: 'Active Listener',         desc: 'Demonstrated excellent active listening' },
+  { emoji: '🙋', name: 'Class Participator',      desc: 'Participated actively in class' },
+  { emoji: '🤝', name: 'Team Player',             desc: 'Worked brilliantly with others' },
+  { emoji: '🚀', name: 'Most Improved',           desc: 'Showed great improvement today' },
+  { emoji: '😊', name: 'Positive Attitude',       desc: 'Kept a wonderful positive attitude' },
+];
+
+function buildBadgeMenuHTML(id) {
+  return CLASS_BADGES.map(function(b) {
+    return '<div class="badge-opt" onclick="assignBadge(' + id + ',\'' + b.name.replace(/'/g,"\\'") + '\',\'' + b.desc.replace(/'/g,"\\'") + '\',this)">' +
+      '<span class="bo-emoji">' + b.emoji + '</span>' + esc(b.name) + '</div>';
+  }).join('');
+}
+
+function toggleBadgeMenu(id, e) {
+  e.stopPropagation();
+  var menu = document.getElementById('bmenu-' + id);
+  var isOpen = menu.style.display === 'block';
+  // close all open menus
+  document.querySelectorAll('.badge-menu').forEach(function(m){ m.style.display = 'none'; });
+  if (!isOpen) menu.style.display = 'block';
+}
+
+document.addEventListener('click', function() {
+  document.querySelectorAll('.badge-menu').forEach(function(m){ m.style.display = 'none'; });
+});
+
+async function assignBadge(studentId, badgeName, badgeDesc, optEl) {
+  // close the menu
+  if (optEl) { var menu = optEl.closest('.badge-menu'); if (menu) menu.style.display = 'none'; }
+  try {
+    var res = await fetch('/api/students/' + studentId + '/badges/assign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ badge_type: 'class', badge_name: badgeName, badge_description: badgeDesc })
+    });
+    // play fanfare regardless of response (may succeed silently)
+    badgeFanfare();
+    var badge = CLASS_BADGES.find(function(b){ return b.name === badgeName; });
+    setTimeout(function(){ toast((badge ? badge.emoji + ' ' : '') + badgeName + ' badge awarded!'); }, 350);
+    // flash the card
+    var card = document.getElementById('card-' + studentId);
+    if (card) {
+      card.classList.remove('flash-g', 'flash-r');
+      void card.offsetWidth;
+      card.classList.add('flash-g');
+    }
+    // update badge count display
+    var s = students.find(function(x){ return x.id === studentId; });
+    if (s) {
+      s.badgeCount = (s.badgeCount || 0) + 1;
+      var cnt = document.getElementById('bcnt-' + studentId);
+      if (cnt) { cnt.textContent = '🏅 ' + s.badgeCount + ' ▾'; }
+    }
+  } catch(e) {
+    badgeFanfare();
+    var badge = CLASS_BADGES.find(function(b){ return b.name === badgeName; });
+    setTimeout(function(){ toast((badge ? badge.emoji + ' ' : '') + badgeName + ' badge awarded!'); }, 350);
+  }
+}
+
+window.addEventListener('load', function() { loadDropdowns(); });
+
+async function loadDropdowns() {
+  try {
+    var r1 = await fetch('/api/live-points/all-students');
+    allStudents = await r1.json();
+    if (!Array.isArray(allStudents)) allStudents = [];
+
+    var r2 = await fetch('/api/groups');
+    allGroups = await r2.json();
+    if (!Array.isArray(allGroups)) allGroups = [];
+
+    var ss = document.getElementById('sel-student');
+    ss.innerHTML = '<option value="">-- choose student --</option>';
+    allStudents.forEach(function(s) { ss.appendChild(new Option(s.name, s.id)); });
+
+    var sg = document.getElementById('sel-group');
+    sg.innerHTML = '<option value="">-- choose group --</option>';
+    allGroups.forEach(function(g) { sg.appendChild(new Option(g.group_name, g.id)); });
+  } catch(e) {
+    document.getElementById('s-list').innerHTML =
+      '<div style="background:#fee2e2;color:#991b1b;border-radius:10px;padding:14px 16px;font-size:12px;text-align:center;">' +
+      '&#9888; Could not connect to server.<br><br>' +
+      '<button onclick="loadDropdowns()" style="background:#991b1b;color:#fff;border:none;border-radius:7px;padding:7px 18px;cursor:pointer;font-weight:700;font-size:12px;">&#8635; Retry</button>' +
+      '</div>';
+    document.getElementById('sel-student').innerHTML = '<option value="">-- retry above --</option>';
+    document.getElementById('sel-group').innerHTML   = '<option value="">-- retry above --</option>';
+  }
+}
+
+function switchTab(t) {
+  document.getElementById('tab-s').classList.toggle('on', t === 'student');
+  document.getElementById('tab-g').classList.toggle('on', t === 'group');
+  document.getElementById('pane-student').style.display = t === 'student' ? '' : 'none';
+  document.getElementById('pane-group').style.display   = t === 'group'   ? '' : 'none';
+  students = [];
+  document.getElementById('s-list').innerHTML = '<div class="empty">Select a student or group above</div>';
+}
+
+async function onStudentChange() {
+  var id = parseInt(document.getElementById('sel-student').value);
+  if (!id) { students = []; document.getElementById('s-list').innerHTML = '<div class="empty">Select a student or group above</div>'; return; }
+  var s = allStudents.find(function(x){ return x.id === id; });
+  students = [{ id: id, name: s ? s.name : 'Student', points: 0, badgeCount: 0 }];
+  await loadTotals();
+  await loadBadgeCounts();
+  renderList();
+}
+
+async function onGroupChange() {
+  var gid = parseInt(document.getElementById('sel-group').value);
+  if (!gid) { students = []; document.getElementById('s-list').innerHTML = '<div class="empty">Select a student or group above</div>'; return; }
+  try {
+    var r = await fetch('/api/live-points/group/' + gid + '/students');
+    var data = await r.json();
+    students = Array.isArray(data) ? data.map(function(s){ return { id: s.id, name: s.name, points: 0, badgeCount: 0 }; }) : [];
+    await loadTotals();
+    await loadBadgeCounts();
+    renderList();
+  } catch(e) { toast('Could not load group students'); }
+}
+
+async function loadBadgeCounts() {
+  if (!students.length) return;
+  await Promise.all(students.map(async function(s) {
+    try {
+      var r = await fetch('/api/students/' + s.id + '/badges');
+      var data = await r.json();
+      s.badgeCount = Array.isArray(data) ? data.length : 0;
+    } catch(e) { s.badgeCount = 0; }
+  }));
+}
+
+async function loadTotals() {
+  if (!students.length) return;
+  try {
+    var ids = students.map(function(s){ return s.id; }).join(',');
+    var r = await fetch('/api/live-points/totals?ids=' + ids);
+    var rows = await r.json();
+    if (Array.isArray(rows)) {
+      rows.forEach(function(row) {
+        var s = students.find(function(x){ return x.id === row.student_id; });
+        if (s) s.points = parseInt(row.total_points) || 0;
+      });
+    }
+  } catch(e) {}
+}
+
+function renderList() {
+  var list = document.getElementById('s-list');
+  list.innerHTML = '';
+  if (!students.length) { list.innerHTML = '<div class="empty">No students found</div>'; return; }
+  students.forEach(function(s) {
+    var card = document.createElement('div');
+    card.className = 's-card';
+    card.id = 'card-' + s.id;
+    var bc = s.badgeCount || 0;
+    card.innerHTML =
+      '<div class="av">' + esc(s.name.charAt(0).toUpperCase()) + '</div>' +
+      '<div class="s-name" title="' + esc(s.name) + '">' + esc(s.name.split(' ')[0]) + '</div>' +
+      '<div class="badge-wrap" id="bwrap-' + s.id + '">' +
+        '<button class="badge-count-btn" id="bcnt-' + s.id + '" onclick="toggleBadgeMenu(' + s.id + ', event)" title="Award a badge">🏅 ' + bc + ' ▾</button>' +
+        '<div class="badge-menu" id="bmenu-' + s.id + '">' + buildBadgeMenuHTML(s.id) + '</div>' +
+      '</div>' +
+      '<div class="s-pts" id="pts-' + s.id + '">' + s.points + '</div>' +
+      '<div class="btn-row">' +
+        '<button class="pb p1" onclick="give(' + s.id + ',1)">+1</button>' +
+        '<button class="pb p5" onclick="give(' + s.id + ',5)">+5</button>' +
+        '<button class="pb m1" onclick="give(' + s.id + ',-1)">&minus;1</button>' +
+      '</div>';
+    list.appendChild(card);
+  });
+}
+
+async function give(studentId, pts) {
+  try {
+    var res = await fetch('/api/live-points/award', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ student_id: studentId, points: pts, reason: pts > 0 ? 'Class point' : 'Deducted', session_id: null })
+    });
+    var data = await res.json();
+    if (!res.ok) { toast((data.error || 'Error')); return; }
+
+    playSound(pts > 0);
+
+    var s = students.find(function(x){ return x.id === studentId; });
+    if (s) s.points = data.total_points;
+
+    var ptsEl = document.getElementById('pts-' + studentId);
+    if (ptsEl) ptsEl.textContent = data.total_points;
+
+    var card = document.getElementById('card-' + studentId);
+    if (card) {
+      card.classList.remove('flash-g', 'flash-r');
+      void card.offsetWidth;
+      card.classList.add(pts > 0 ? 'flash-g' : 'flash-r');
+    }
+
+    // Sync PiP widget if open
+    _syncPiP();
+    _syncZoomView(studentId, data.total_points, pts > 0);
+    if (_pipWin) {
+      try {
+        var pipCard = _pipWin.document.getElementById('pip-card-' + studentId);
+        if (pipCard) {
+          pipCard.classList.remove('fg', 'fr');
+          void pipCard.offsetWidth;
+          pipCard.classList.add(pts > 0 ? 'fg' : 'fr');
+        }
+      } catch(e) {}
+    }
+
+    if (data.badge_awarded) {
+      badgeFanfare();
+      setTimeout(function(){ toast('Badge unlocked: ' + data.badge_awarded + '!'); }, 400);
+    }
+  } catch(e) { toast('Network error - try again'); }
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+var _tt;
+function toast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_tt);
+  _tt = setTimeout(function(){ el.classList.remove('show'); }, 2800);
+}
+
+// ── Screen Widget (Document Picture-in-Picture — always on top, shows in screen share) ──
+async function openScreenWidget() {
+  if (!students.length) { toast('Select a student or group first'); return; }
+  if (!window.documentPictureInPicture) {
+    toast('\uD83D\uDCA1 Use Chrome 116+ for Screen Widget. Opening popup...');
+    setTimeout(openFloat, 1200);
+    return;
+  }
+  try {
+    if (window.documentPictureInPicture.window) {
+      toast('Widget already open — check your screen!'); return;
+    }
+  } catch(e) {}
+  try {
+    var h = Math.min(60 + students.length * 68, 500);
+    _pipWin = await window.documentPictureInPicture.requestWindow({ width: 315, height: h });
+    _buildPiP();
+    clearInterval(_pipSyncInt);
+    _pipSyncInt = setInterval(function() {
+      try { if (!window.documentPictureInPicture || !window.documentPictureInPicture.window) { clearInterval(_pipSyncInt); _pipWin = null; } }
+      catch(e) { clearInterval(_pipSyncInt); _pipWin = null; }
+    }, 3000);
+  } catch(e) {
+    toast(e.message || 'Could not open widget');
+  }
+}
+
+function _buildPiP() {
+  if (!_pipWin) return;
+  var doc = _pipWin.document;
+  var st = doc.createElement('style');
+  st.textContent = [
+    '* { box-sizing:border-box; margin:0; padding:0; }',
+    'body { font-family:\'Segoe UI\',system-ui,sans-serif; background:#f3eeff; font-size:13px; color:#2d1245; }',
+    '.ph { background:linear-gradient(135deg,#B05D9E 0%,#764ba2 100%); padding:9px 12px;',
+    '       display:flex; align-items:center; justify-content:space-between;',
+    '       position:sticky; top:0; z-index:9; box-shadow:0 2px 8px rgba(176,93,158,0.35); }',
+    '.pt { font-size:14px; font-weight:800; color:#fff; }',
+    '.pm-btn { background:rgba(255,255,255,0.2); border:1.5px solid rgba(255,255,255,0.5);',
+    '           border-radius:6px; padding:4px 9px; color:#fff; font-size:11px; font-weight:800; cursor:pointer; }',
+    '.pm-btn:hover { background:rgba(255,255,255,0.38); }',
+    '#pip-body { padding:10px; overflow-y:auto; }',
+    'body.mini #pip-body { display:none; }',
+    '.sc { background:#fff; border:1.5px solid #e0cffa; border-radius:10px;',
+    '       padding:9px 11px; display:flex; align-items:center; gap:8px;',
+    '       margin-bottom:8px; box-shadow:0 1px 4px rgba(176,93,158,0.08); }',
+    '.sc.fg { animation:fg 0.5s; }',
+    '.sc.fr { animation:fr 0.5s; }',
+    '@keyframes fg { 0%,100%{background:#fff} 40%{background:#d1fae5;border-color:#34d399} }',
+    '@keyframes fr { 0%,100%{background:#fff} 40%{background:#fee2e2;border-color:#f87171} }',
+    '.av { width:30px;height:30px;border-radius:50%;flex-shrink:0;',
+    '       background:linear-gradient(135deg,#B05D9E 0%,#764ba2 100%);',
+    '       display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff; }',
+    '.sn { flex:1;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:30px; }',
+    '.sp { font-size:17px;font-weight:900;color:#b45309;min-width:34px;text-align:center;',
+    '       background:#fef3c7;border-radius:7px;padding:2px 7px; }',
+    '.br { display:flex;gap:3px; }',
+    '.pb { border:none;border-radius:6px;padding:5px 7px;cursor:pointer;font-size:11px;font-weight:800;transition:transform 0.1s; }',
+    '.pb:active { transform:scale(0.85); }',
+    '.p1 { background:#d1fae5;color:#065f46;border:1.5px solid #34d399; }',
+    '.p5 { background:#fef3c7;color:#92400e;border:1.5px solid #f59e0b; }',
+    '.m1 { background:#fee2e2;color:#991b1b;border:1.5px solid #f87171; }'
+  ].join('\n');
+  doc.head.appendChild(st);
+
+  var tab = document.getElementById('tab-s').classList.contains('on') ? 'student' : 'group';
+  var selEl = tab === 'group' ? document.getElementById('sel-group') : document.getElementById('sel-student');
+  var title = (selEl && selEl.selectedIndex >= 0 && selEl.options[selEl.selectedIndex].text !== '--') ?
+    selEl.options[selEl.selectedIndex].text : 'Class Points';
+
+  doc.body.innerHTML =
+    '<div class="ph">' +
+      '<span class="pt">\u2B50 ' + title + '</span>' +
+      '<button class="pm-btn" id="pip-min" onclick="document.body.classList.toggle(\'mini\');this.textContent=document.body.classList.contains(\'mini\')?\'▲ Show\':\'▼ Hide\'">\u25bc Hide</button>' +
+    '</div>' +
+    '<div id="pip-body"></div>';
+
+  _renderPiP();
+
+  // Expose give so PiP onclick buttons can call it
+  _pipWin._pipGive = give;
+}
+
+function _renderPiP() {
+  if (!_pipWin) return;
+  try {
+    var body = _pipWin.document.getElementById('pip-body');
+    if (!body) return;
+    body.innerHTML = '';
+    students.forEach(function(s) {
+      var d = _pipWin.document.createElement('div');
+      d.className = 'sc';
+      d.id = 'pip-card-' + s.id;
+      d.innerHTML =
+        '<div class="av">' + s.name.charAt(0).toUpperCase() + '</div>' +
+        '<div class="sn" title="' + s.name + '">' + s.name.split(' ')[0] + '</div>' +
+        '<div class="sp" id="pip-pts-' + s.id + '">' + s.points + '</div>' +
+        '<div class="br">' +
+          '<button class="pb p1" onclick="_pipGive(' + s.id + ',1)">+1</button>' +
+          '<button class="pb p5" onclick="_pipGive(' + s.id + ',5)">+5</button>' +
+          '<button class="pb m1" onclick="_pipGive(' + s.id + ',-1)">&minus;1</button>' +
+        '</div>';
+      body.appendChild(d);
+    });
+  } catch(e) { _pipWin = null; }
+}
+
+function _syncPiP() {
+  if (!_pipWin) return;
+  try {
+    students.forEach(function(s) {
+      var el = _pipWin.document.getElementById('pip-pts-' + s.id);
+      if (el) el.textContent = s.points;
+    });
+  } catch(e) { _pipWin = null; }
+}
+
+// ── Zoom Share Mode ──
+async function openZoomShare() {
+  if (!students.length) { toast('Select a student or group first'); return; }
+  var existing = document.getElementById('zoom-overlay');
+  if (existing) {
+    toast('Zoom Share is already active — share this tab in Zoom!');
+    return;
+  }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+    toast('Screen capture not supported in this browser. Use Chrome or Edge.');
+    return;
+  }
+  try {
+    var stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { cursor: 'always' },
+      audio: false
+    });
+    _buildZoomView(stream);
+  } catch(e) {
+    if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') {
+      toast('Could not capture screen: ' + (e.message || e.name));
+    }
+  }
+}
+
+function _buildZoomView(stream) {
+  var ov = document.createElement('div');
+  ov.id = 'zoom-overlay';
+
+  // Fullscreen background video
+  var vid = document.createElement('video');
+  vid.className = 'zo-vid';
+  vid.autoplay = true;
+  vid.muted = true;
+  vid.playsInline = true;
+  vid.srcObject = stream;
+  ov.appendChild(vid);
+
+  // Floating points panel (top-left, draggable)
+  var tabIsStudent = document.getElementById('tab-s').classList.contains('on');
+  var selEl = tabIsStudent
+    ? document.getElementById('sel-student')
+    : document.getElementById('sel-group');
+  var label = (selEl && selEl.selectedIndex > 0 && selEl.options[selEl.selectedIndex].text.indexOf('--') === -1)
+    ? selEl.options[selEl.selectedIndex].text
+    : 'Class Points';
+
+  var panel = document.createElement('div');
+  panel.className = 'zo-panel';
+  panel.innerHTML =
+    '<div class="zo-title" id="zo-drag-handle">' +
+      '<span>\u2B50 ' + esc(label) + '</span>' +
+      '<button class="zo-hide-btn" id="zo-hide-btn">\u25bc Hide</button>' +
+    '</div>' +
+    '<div id="zo-cards"></div>';
+  ov.appendChild(panel);
+
+  // Hide/show cards
+  var hideBtn = panel.querySelector('#zo-hide-btn');
+  hideBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var cards = panel.querySelector('#zo-cards');
+    var hidden = cards.style.display === 'none';
+    cards.style.display = hidden ? '' : 'none';
+    hideBtn.textContent = hidden ? '\u25bc Hide' : '\u25b2 Show';
+  });
+
+  // Drag to reposition
+  var dragHandle = panel.querySelector('#zo-drag-handle');
+  var dragX = 0, dragY = 0, startX = 0, startY = 0;
+  dragHandle.addEventListener('mousedown', function(e) {
+    if (e.target === hideBtn) return;
+    e.preventDefault();
+    startX = e.clientX - panel.offsetLeft;
+    startY = e.clientY - panel.offsetTop;
+    function onMove(ev) {
+      panel.style.left = Math.max(0, ev.clientX - startX) + 'px';
+      panel.style.top  = Math.max(0, ev.clientY - startY) + 'px';
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  // Stop button bottom-right corner
+  var stopBtn = document.createElement('button');
+  stopBtn.className = 'zo-stop';
+  stopBtn.textContent = '\u2715 Stop Zoom Share';
+  stopBtn.onclick = function() {
+    stream.getTracks().forEach(function(t) { t.stop(); });
+    ov.remove();
+    var zBtn = document.getElementById('btn-zoom');
+    if (zBtn) zBtn.classList.remove('active');
+  };
+  ov.appendChild(stopBtn);
+
+  document.body.appendChild(ov);
+
+  var zBtn = document.getElementById('btn-zoom');
+  if (zBtn) zBtn.classList.add('active');
+
+  _renderZoomCards();
+
+  // Auto-close when browser stop-share is clicked
+  stream.getTracks()[0].addEventListener('ended', function() {
+    ov.remove();
+    if (zBtn) zBtn.classList.remove('active');
+  });
+}
+
+function _renderZoomCards() {
+  var container = document.getElementById('zo-cards');
+  if (!container) return;
+  container.innerHTML = '';
+  students.forEach(function(s) {
+    var card = document.createElement('div');
+    card.className = 'zo-card';
+    card.id = 'zo-card-' + s.id;
+    card.innerHTML =
+      '<div class="zo-av">' + esc(s.name.charAt(0).toUpperCase()) + '</div>' +
+      '<div class="zo-name" title="' + esc(s.name) + '">' + esc(s.name.split(' ')[0]) + '</div>' +
+      '<div class="zo-pts" id="zo-pts-' + s.id + '">' + s.points + '</div>' +
+      '<div class="zo-btns">' +
+        '<button class="pb p1" onclick="give(' + s.id + ',1)">+1</button>' +
+        '<button class="pb p2" onclick="give(' + s.id + ',2)">+2</button>' +
+        '<button class="pb p5" onclick="give(' + s.id + ',5)">+5</button>' +
+        '<button class="pb m1" onclick="give(' + s.id + ',-1)">&minus;1</button>' +
+      '</div>';
+    container.appendChild(card);
+  });
+}
+
+function _syncZoomView(studentId, points, positive) {
+  var el = document.getElementById('zo-pts-' + studentId);
+  if (el) el.textContent = points;
+  var card = document.getElementById('zo-card-' + studentId);
+  if (card) {
+    card.classList.remove('flash-g', 'flash-r');
+    void card.offsetWidth;
+    card.classList.add(positive ? 'flash-g' : 'flash-r');
+  }
+}
+
+// ── Float / pop-out support ──
+var _urlQ   = new URLSearchParams(location.search);
+var _isFloat = _urlQ.get('float') === '1';
+
+function openFloat() {
+  var tab   = document.getElementById('tab-s').classList.contains('on') ? 'student' : 'group';
+  var selId = tab === 'student'
+    ? document.getElementById('sel-student').value
+    : document.getElementById('sel-group').value;
+  var url = location.pathname + '?float=1&tab=' + encodeURIComponent(tab) +
+    (selId ? '&id=' + encodeURIComponent(selId) : '');
+  var sw = screen.availWidth, sh = screen.availHeight;
+  var pop = window.open(
+    url, 'classpoints_float',
+    'width=300,height=460' +
+    ',top='  + Math.max(0, Math.round(sh * 0.05)) +
+    ',left=' + Math.max(0, sw - 318) +
+    ',toolbar=no,location=no,menubar=no,scrollbars=yes,resizable=yes'
+  );
+  if (!pop) toast('Allow pop-ups for this site to use Float mode');
+}
+
+function refreshPts() {
+  students.forEach(function(s) {
+    var el = document.getElementById('pts-' + s.id);
+    if (el) el.textContent = s.points;
+  });
+}
+
+window.addEventListener('load', function() {
+  if (_isFloat) {
+    document.body.classList.add('float-mode');
+    var btn = document.getElementById('btn-float');
+    if (btn) btn.style.display = 'none';
+    document.title = '\uD83D\uDCCC Class Points';
+    var tab = _urlQ.get('tab') || 'student';
+    var id  = _urlQ.get('id');
+    loadDropdowns().then(function() {
+      if (id) {
+        if (tab === 'group') {
+          switchTab('group');
+          document.getElementById('sel-group').value = id;
+          onGroupChange();
+        } else {
+          document.getElementById('sel-student').value = id;
+          onStudentChange();
+        }
+      }
+    });
+    // Auto-refresh points every 10 s so the popup stays current
+    setInterval(function() { loadTotals().then(function() { refreshPts(); }); }, 10000);
+
+    // ── Pin-on-top: keep float window in front while Canva/PPT is running ──
+    var _pinned = true;  // ON by default so it just works
+    var pinBtn = document.getElementById('btn-pin');
+    if (pinBtn) {
+      pinBtn.style.display = 'inline-block';
+      pinBtn.classList.add('pinned');
+      pinBtn.textContent = '\uD83D\uDCCC Pinned';
+      pinBtn.addEventListener('click', function() {
+        _pinned = !_pinned;
+        if (_pinned) {
+          pinBtn.classList.add('pinned');
+          pinBtn.textContent = '\uD83D\uDCCC Pinned';
+          pinBtn.title = 'Click to unpin — window will no longer force itself to front';
+        } else {
+          pinBtn.classList.remove('pinned');
+          pinBtn.textContent = '\u2610 Pin';
+          pinBtn.title = 'Click to pin — keeps this window on top while you work in Canva';
+        }
+      });
+    }
+    // When the float window loses focus and pin is ON, aggressively reclaim it.
+    // A single window.focus() isn't enough — Canva re-steals focus on every
+    // page change. Instead we run a rapid interval (every 200ms) for 2 seconds
+    // after each blur, hammering focus back before Canva can settle.
+    var _pinFocusInterval = null;
+    function _startPinFocusBurst() {
+      if (!_pinned) return;
+      clearInterval(_pinFocusInterval);
+      var bursts = 0;
+      _pinFocusInterval = setInterval(function() {
+        if (!_pinned || bursts >= 10) {   // 10 × 200ms = 2 second burst
+          clearInterval(_pinFocusInterval);
+          _pinFocusInterval = null;
+          return;
+        }
+        window.focus();
+        bursts++;
+      }, 200);
+    }
+    window.addEventListener('blur', _startPinFocusBurst);
+    // Also keep a slow steady ping (every 800ms) so if Canva takes focus
+    // again after the burst, we still reclaim it quickly.
+    setInterval(function() {
+      if (_pinned && document.visibilityState !== 'hidden' && document.hasFocus && !document.hasFocus()) {
+        window.focus();
+      }
+    }, 800);
+    // ────────────────────────────────────────────────────────────────────────
+  } else {
+    loadDropdowns();
+  }
+});
+</script>
+</body>
+</html>

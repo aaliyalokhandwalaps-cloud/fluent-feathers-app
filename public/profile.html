@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile - Fluent Feathers Academy</title>
+  <link rel="icon" type="image/png" href="/app-icon.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      background: white;
+      padding: 15px 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .header h1 {
+      color: #B05D9E;
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .back-btn {
+      background: #B05D9E;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .back-btn:hover {
+      background: #9A4D88;
+    }
+    .section {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+    }
+    .section h2 {
+      color: #B05D9E;
+      margin-bottom: 10px;
+      font-size: 1.25rem;
+    }
+    .section p {
+      color: #718096;
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+    }
+    .basic-info {
+      background: linear-gradient(135deg, #B05D9E 0%, #764ba2 100%);
+      padding: 25px;
+      border-radius: 12px;
+      color: white;
+      margin-bottom: 20px;
+    }
+    .basic-info h3 {
+      margin: 0 0 20px 0;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .form-group label {
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.9);
+    }
+    .form-group input, .form-group textarea {
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      background: rgba(255,255,255,0.95);
+      width: 100%;
+    }
+    .bio-section {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      border: 2px solid #e2e8f0;
+      margin-bottom: 20px;
+    }
+    .bio-section h3 {
+      color: #B05D9E;
+      margin: 0 0 15px 0;
+    }
+    .bio-section textarea {
+      width: 100%;
+      padding: 15px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 1rem;
+      line-height: 1.6;
+      resize: vertical;
+      min-height: 200px;
+    }
+    .tip {
+      color: #718096;
+      font-size: 0.85rem;
+      margin-top: 10px;
+    }
+    .preview-section {
+      background: #f7fafc;
+      padding: 25px;
+      border-radius: 12px;
+      border: 2px solid #e2e8f0;
+      margin-bottom: 20px;
+    }
+    .preview-section h3 {
+      color: #2d3748;
+      margin: 0 0 15px 0;
+    }
+    .preview-card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      border-left: 4px solid #B05D9E;
+    }
+    .preview-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+    .preview-avatar {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #B05D9E 0%, #764ba2 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.5rem;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+    .preview-name {
+      margin: 0;
+      color: #2d3748;
+    }
+    .preview-title {
+      margin: 5px 0 0;
+      color: #B05D9E;
+      font-size: 0.9rem;
+    }
+    .preview-bio {
+      color: #4a5568;
+      font-size: 0.95rem;
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+    .btn-primary {
+      background: #B05D9E;
+      color: white;
+      border: none;
+      padding: 14px 40px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    .btn-primary:hover {
+      background: #9A4D88;
+    }
+    .btn-container {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .success-msg {
+      background: #c6f6d5;
+      color: #276749;
+      padding: 12px 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .save-feedback {
+      margin-top: 15px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      display: none;
+      text-align: center;
+    }
+    .save-feedback.success {
+      background: #c6f6d5;
+      color: #276749;
+      border: 1.5px solid #9ae6b4;
+    }
+    .save-feedback.error {
+      background: #fed7d7;
+      color: #c53030;
+      border: 1.5px solid #feb2b2;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>👤 My Profile & Bio</h1>
+      <a href="admin.html" class="back-btn">← Back to Dashboard</a>
+    </div>
+
+    <div id="successMsg" class="success-msg">Profile saved successfully!</div>
+
+    <div class="section">
+      <h2>👤 My Profile & Bio</h2>
+      <p>This bio will be sent to demo parents before their demo class to build trust and showcase your expertise.</p>
+
+      <form id="profileForm">
+        <div class="basic-info">
+          <h3>✨ Basic Information</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Your Name</label>
+              <input type="text" id="adminName" placeholder="Aaliya">
+            </div>
+            <div class="form-group">
+              <label>Title / Role</label>
+              <input type="text" id="adminTitle" placeholder="Founder & Lead Instructor">
+            </div>
+          </div>
+        </div>
+
+        <div class="bio-section">
+          <h3>📝 About You / Bio</h3>
+          <p style="color: #718096; font-size: 0.9rem; margin-bottom: 15px;">Write about your experience, qualifications, teaching philosophy, and what makes your classes special.</p>
+          <textarea id="adminBio" placeholder="Hi! I'm Aaliya, the founder of Fluent Feathers Academy...
+
+I have X years of experience in teaching children...
+
+My teaching philosophy focuses on...
+
+What makes my classes unique:
+• Interactive and fun learning
+• Personalized attention
+• Regular progress updates
+
+I'm passionate about helping children develop confidence in communication!"></textarea>
+          <p class="tip">💡 Tip: Include your experience, qualifications, teaching style, and what parents can expect.</p>
+        </div>
+
+        <div class="preview-section">
+          <h3>📧 Email Preview</h3>
+          <p style="color: #718096; font-size: 0.9rem; margin-bottom: 15px;">This is how your bio will appear in demo confirmation emails:</p>
+          <div class="preview-card">
+            <div class="preview-header">
+              <div class="preview-avatar" id="previewAvatar">A</div>
+              <div>
+                <h4 class="preview-name" id="previewName">Aaliya</h4>
+                <p class="preview-title" id="previewTitle">Founder & Lead Instructor</p>
+              </div>
+            </div>
+            <p class="preview-bio" id="previewBio"><em>Your bio will appear here...</em></p>
+          </div>
+        </div>
+
+        <div class="btn-container">
+          <button type="submit" id="saveProfileBtn" class="btn-primary">💾 Save Profile</button>
+          <div id="saveFeedback" class="save-feedback"></div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Load existing profile data
+    async function loadProfile() {
+      try {
+        const res = await fetch('/api/admin/settings');
+        const data = await res.json();
+        if (data) {
+          document.getElementById('adminName').value = data.admin_name || '';
+          document.getElementById('adminTitle').value = data.admin_title || '';
+          document.getElementById('adminBio').value = data.admin_bio || '';
+          updatePreview();
+        }
+      } catch (err) {
+        console.error('Error loading profile:', err);
+      }
+    }
+
+    // Update preview in real-time
+    function updatePreview() {
+      const name = document.getElementById('adminName').value || 'Aaliya';
+      const title = document.getElementById('adminTitle').value || 'Founder & Lead Instructor';
+      const bio = document.getElementById('adminBio').value || 'Your bio will appear here...';
+
+      document.getElementById('previewAvatar').textContent = name.charAt(0).toUpperCase();
+      document.getElementById('previewName').textContent = name;
+      document.getElementById('previewTitle').textContent = title;
+      document.getElementById('previewBio').textContent = bio;
+    }
+
+    // Add event listeners for real-time preview
+    document.getElementById('adminName').addEventListener('input', updatePreview);
+    document.getElementById('adminTitle').addEventListener('input', updatePreview);
+    document.getElementById('adminBio').addEventListener('input', updatePreview);
+
+    // Save profile
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const btn = document.getElementById('saveProfileBtn');
+      const feedback = document.getElementById('saveFeedback');
+
+      const data = {
+        admin_name: document.getElementById('adminName').value,
+        admin_title: document.getElementById('adminTitle').value,
+        admin_bio: document.getElementById('adminBio').value
+      };
+
+      btn.disabled = true;
+      btn.textContent = '⏳ Saving...';
+      feedback.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/admin/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+          feedback.textContent = '✅ Profile saved successfully!';
+          feedback.className = 'save-feedback success';
+          feedback.style.display = 'block';
+          setTimeout(() => { feedback.style.display = 'none'; }, 4000);
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          feedback.textContent = '❌ Failed to save: ' + (errData.error || res.statusText);
+          feedback.className = 'save-feedback error';
+          feedback.style.display = 'block';
+        }
+      } catch (err) {
+        feedback.textContent = '❌ Error: ' + err.message;
+        feedback.className = 'save-feedback error';
+        feedback.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Save Profile';
+      }
+    });
+
+    // Load profile on page load
+    loadProfile();
+  </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd \"c:\\\\Users\\\\ADMIN\\\\OneDrive\\\\Desktop\\\\solved simplied dashboard\\\\fluentfeathers_lms\"; powershell -NoProfile -Command \"\\(Get-Content server\\.js\\)\\[11657\\.\\.11669\\] \\| ForEach-Object \\{ \\$_ \\}\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

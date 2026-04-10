@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teaching Whiteboard - Fluent Feathers Academy</title>
+  <link rel="icon" type="image/png" href="/app-icon.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      background: white;
+      padding: 15px 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .header h1 {
+      color: #B05D9E;
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header h1 span {
+      color: #718096;
+      font-weight: 400;
+    }
+    .back-btn {
+      background: #B05D9E;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .back-btn:hover {
+      background: #9A4D88;
+    }
+    .whiteboard-section {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px;
+      background: #f7fafc;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    .tool-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .tools-row {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+    .wb-tool-btn {
+      padding: 8px 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #4a5568;
+      transition: all 0.2s;
+    }
+    .wb-tool-btn:hover {
+      border-color: #B05D9E;
+      background: #fdf2f8;
+    }
+    .wb-tool-btn.active {
+      border-color: #B05D9E;
+      background: #B05D9E;
+      color: white;
+    }
+    .wb-color-btn {
+      width: 32px;
+      height: 32px;
+      border: 2px solid #e2e8f0;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .wb-color-btn:hover {
+      transform: scale(1.15);
+    }
+    .wb-color-btn.active {
+      border-color: #2d3748;
+      box-shadow: 0 0 0 2px white, 0 0 0 4px #B05D9E;
+    }
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-gray { background: #718096; color: white; }
+    .btn-green { background: #38a169; color: white; }
+    .btn-red { background: #e53e3e; color: white; }
+    .btn:hover { opacity: 0.9; }
+    .canvas-container {
+      background: white;
+      border: 3px solid #B05D9E;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    #whiteboardCanvas {
+      display: block;
+      width: 100%;
+      height: 600px;
+    }
+    #whiteboardCanvas.cursor-pen,
+    #whiteboardCanvas.cursor-pencil {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2'%3E%3Cpath d='M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z'/%3E%3C/svg%3E") 0 24, crosshair;
+    }
+    #whiteboardCanvas.cursor-highlighter {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='%23ffd700' stroke='%23333' stroke-width='1.5'%3E%3Crect x='4' y='2' width='8' height='18' rx='2' transform='rotate(30 8 11)'/%3E%3C/svg%3E") 4 20, crosshair;
+    }
+    #whiteboardCanvas.cursor-eraser {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24'%3E%3Crect x='3' y='8' width='18' height='12' rx='2' fill='%23f8b4d9' stroke='%23B05D9E' stroke-width='2'/%3E%3Crect x='3' y='8' width='18' height='5' fill='%23B05D9E'/%3E%3C/svg%3E") 12 20, crosshair;
+    }
+    #whiteboardCanvas.cursor-text {
+      cursor: text;
+    }
+    .size-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .size-control span {
+      font-size: 0.85rem;
+      color: #718096;
+    }
+    .size-control input[type="range"] {
+      width: 100px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎨 Fluent Feathers Academy <span>- Teaching Whiteboard</span></h1>
+      <a href="admin.html" class="back-btn">← Back to Dashboard</a>
+    </div>
+
+    <div class="whiteboard-section">
+      <div class="toolbar">
+        <div class="tool-group">
+          <div class="tools-row">
+            <button onclick="setTool('pen')" id="toolPen" class="wb-tool-btn active">✏️ Pen</button>
+            <button onclick="setTool('pencil')" id="toolPencil" class="wb-tool-btn">✎ Pencil</button>
+            <button onclick="setTool('highlighter')" id="toolHighlighter" class="wb-tool-btn">🖍️ Marker</button>
+            <button onclick="setTool('eraser')" id="toolEraser" class="wb-tool-btn">🧹 Eraser</button>
+            <button onclick="setTool('text')" id="toolText" class="wb-tool-btn">T Text</button>
+          </div>
+          <div class="tools-row">
+            <button onclick="setColor('#000000')" class="wb-color-btn active" style="background: #000000;" data-color="#000000"></button>
+            <button onclick="setColor('#e53e3e')" class="wb-color-btn" style="background: #e53e3e;" data-color="#e53e3e"></button>
+            <button onclick="setColor('#dd6b20')" class="wb-color-btn" style="background: #dd6b20;" data-color="#dd6b20"></button>
+            <button onclick="setColor('#38a169')" class="wb-color-btn" style="background: #38a169;" data-color="#38a169"></button>
+            <button onclick="setColor('#3182ce')" class="wb-color-btn" style="background: #3182ce;" data-color="#3182ce"></button>
+            <button onclick="setColor('#805ad5')" class="wb-color-btn" style="background: #805ad5;" data-color="#805ad5"></button>
+          </div>
+          <div class="size-control">
+            <span>Size:</span>
+            <input type="range" id="brushSize" min="1" max="50" value="3" onchange="updateBrushSize(this.value)">
+            <span id="brushSizeLabel">3px</span>
+          </div>
+        </div>
+        <div class="action-buttons">
+          <button onclick="undo()" class="btn btn-gray">↩ Undo</button>
+          <button onclick="redo()" class="btn btn-gray">↪ Redo</button>
+          <button onclick="download()" class="btn btn-green">💾 Save</button>
+          <button onclick="clearCanvas()" class="btn btn-red">🗑️ Clear</button>
+        </div>
+      </div>
+
+      <div class="canvas-container">
+        <canvas id="whiteboardCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('whiteboardCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let isDrawing = false;
+    let currentTool = 'pen';
+    let currentColor = '#000000';
+    let brushSize = 3;
+    let lastX = 0;
+    let lastY = 0;
+    let history = [];
+    let historyIndex = -1;
+
+    // Set canvas size
+    function resizeCanvas() {
+      const container = canvas.parentElement;
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+
+      // Save current drawing
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      canvas.width = rect.width * dpr;
+      canvas.height = 600 * dpr;
+      canvas.style.width = rect.width + 'px';
+      canvas.style.height = '600px';
+
+      ctx.scale(dpr, dpr);
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Restore drawing if exists
+      if (imageData.data.some(d => d !== 0)) {
+        ctx.putImageData(imageData, 0, 0);
+      }
+    }
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    saveState();
+
+    function setTool(tool) {
+      currentTool = tool;
+      document.querySelectorAll('.wb-tool-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('tool' + tool.charAt(0).toUpperCase() + tool.slice(1)).classList.add('active');
+
+      // Update cursor based on tool
+      canvas.className = '';
+      canvas.classList.add('cursor-' + tool);
+    }
+
+    // Set initial cursor
+    document.addEventListener('DOMContentLoaded', () => {
+      canvas.classList.add('cursor-pen');
+    });
+
+    function setColor(color) {
+      currentColor = color;
+      document.querySelectorAll('.wb-color-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.color === color);
+      });
+    }
+
+    function updateBrushSize(size) {
+      brushSize = parseInt(size);
+      document.getElementById('brushSizeLabel').textContent = size + 'px';
+    }
+
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX || e.touches[0].clientX) - rect.left;
+      const y = (e.clientY || e.touches[0].clientY) - rect.top;
+      return { x, y };
+    }
+
+    function startDrawing(e) {
+      e.preventDefault();
+      isDrawing = true;
+      const pos = getPos(e);
+      lastX = pos.x;
+      lastY = pos.y;
+
+      if (currentTool === 'text') {
+        const text = prompt('Enter text:');
+        if (text) {
+          ctx.font = `${brushSize * 5}px Arial`;
+          ctx.fillStyle = currentColor;
+          ctx.fillText(text, pos.x, pos.y);
+          saveState();
+        }
+        isDrawing = false;
+      }
+    }
+
+    function draw(e) {
+      if (!isDrawing || currentTool === 'text') return;
+      e.preventDefault();
+
+      const pos = getPos(e);
+
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(pos.x, pos.y);
+
+      if (currentTool === 'eraser') {
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = brushSize * 3;
+      } else if (currentTool === 'highlighter') {
+        ctx.strokeStyle = currentColor;
+        ctx.lineWidth = brushSize * 3;
+        ctx.globalAlpha = 0.3;
+      } else if (currentTool === 'pencil') {
+        ctx.strokeStyle = currentColor;
+        ctx.lineWidth = brushSize * 0.5;
+        ctx.globalAlpha = 0.6;
+      } else {
+        ctx.strokeStyle = currentColor;
+        ctx.lineWidth = brushSize;
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      lastX = pos.x;
+      lastY = pos.y;
+    }
+
+    function stopDrawing() {
+      if (isDrawing) {
+        isDrawing = false;
+        saveState();
+      }
+    }
+
+    function saveState() {
+      historyIndex++;
+      history = history.slice(0, historyIndex);
+      history.push(canvas.toDataURL());
+    }
+
+    function undo() {
+      if (historyIndex > 0) {
+        historyIndex--;
+        const img = new Image();
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+        };
+        img.src = history[historyIndex];
+      }
+    }
+
+    function redo() {
+      if (historyIndex < history.length - 1) {
+        historyIndex++;
+        const img = new Image();
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+        };
+        img.src = history[historyIndex];
+      }
+    }
+
+    function clearCanvas() {
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      saveState();
+    }
+
+    function download() {
+      const link = document.createElement('a');
+      link.download = 'whiteboard-' + new Date().toISOString().slice(0, 10) + '.png';
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+
+    // Mouse events
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+
+    // Touch events
+    canvas.addEventListener('touchstart', startDrawing);
+    canvas.addEventListener('touchmove', draw);
+    canvas.addEventListener('touchend', stopDrawing);
+  </script>
+</body>
+</html>
