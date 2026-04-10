@@ -1,0 +1,24 @@
+{
+  "name": "Fluent Feathers Academy LMS",
+  "short_name": "Fluent Feathers",
+  "description": "Learning Management System for Fluent Feathers Academy",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#B05D9E",
+  "theme_color": "#B05D9E",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/app-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

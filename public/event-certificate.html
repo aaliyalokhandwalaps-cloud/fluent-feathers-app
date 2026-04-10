@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Participation Certificate - Fluent Feathers Academy By Aaliya</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .header h1 {
+      color: white;
+      font-size: 28px;
+      margin-bottom: 10px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .header p {
+      color: rgba(255,255,255,0.9);
+      font-size: 16px;
+    }
+    .loading {
+      text-align: center;
+      padding: 60px;
+      color: white;
+      font-size: 18px;
+    }
+    .error {
+      text-align: center;
+      padding: 60px;
+      color: #e53e3e;
+      background: #fff5f5;
+      border-radius: 12px;
+    }
+    .certificate-wrapper {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      margin-bottom: 20px;
+    }
+    .download-btn {
+      display: block;
+      width: 100%;
+      max-width: 300px;
+      margin: 20px auto;
+      padding: 15px 30px;
+      background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+      color: white;
+      border: none;
+      border-radius: 30px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .download-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+    }
+    .download-btn:disabled {
+      background: #a0aec0;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .back-link {
+      text-align: center;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Participation Certificate</h1>
+      <p>Fluent Feathers Academy By Aaliya</p>
+    </div>
+
+    <div id="content">
+      <div class="loading">
+        <div style="font-size: 40px; margin-bottom: 15px;">🏆</div>
+        Loading certificate...
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function loadCertificate() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const registrationId = urlParams.get('id');
+
+      if (!registrationId) {
+        document.getElementById('content').innerHTML = `
+          <div class="error">
+            <div style="font-size: 40px; margin-bottom: 15px;">❌</div>
+            <h3>Invalid Link</h3>
+            <p>No certificate ID provided.</p>
+          </div>
+        `;
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/event-certificate/${registrationId}`);
+        if (!res.ok) {
+          throw new Error('Certificate not found');
+        }
+
+        const data = await res.json();
+
+        const childName = data.child_name || 'Student';
+        const eventName = data.event_name || 'Event';
+        const eventDate = data.event_date ? new Date(data.event_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+
+        // Store data for PDF generation
+        window.certData = {
+          name: childName,
+          eventName: eventName,
+          date: eventDate
+        };
+
+        document.getElementById('content').innerHTML = `
+          <div class="certificate-wrapper">
+            <!-- Award Card Display -->
+            <div style="background: linear-gradient(135deg, #fdf2f8 0%, #ede9fe 100%); border: 3px solid #8b5cf6; border-radius: 20px; padding: 40px; text-align: center; max-width: 700px; margin: 0 auto 20px;">
+              <div style="font-size: 60px; margin-bottom: 15px;">🏆</div>
+              <h2 style="color: #5b21b6; font-size: 28px; margin: 0 0 20px; font-family: 'Georgia', serif;">${eventName}</h2>
+              <p style="color: #7c3aed; font-size: 16px; margin: 0 0 10px;">This certificate is proudly presented to</p>
+              <h1 style="color: #C41E3A; font-size: 36px; margin: 0 0 20px; font-family: 'Georgia', serif; text-transform: uppercase; letter-spacing: 2px;">${childName}</h1>
+              <p style="color: #5b21b6; font-size: 14px; margin: 0;">for participation & enthusiasm</p>
+              <p style="color: #78716c; font-size: 14px; margin: 15px 0 0;">${eventDate}</p>
+            </div>
+
+            <!-- Hidden certificate for PDF generation -->
+            <div id="certificate" style="position: absolute; left: -9999px; width: 800px;">
+              <div style="position: relative; width: 800px;">
+                <img id="cert-bg-img" src="https://res.cloudinary.com/dmqipms4f/image/upload/pg_1/v1770446200/Participation_Student_Certificate_eeorou.png" style="width: 100%; display: block;" crossorigin="anonymous">
+                <!-- Event Name at 26% from top (same as certificate title in assessments) -->
+                <div style="position: absolute; top: 26%; left: 50%; transform: translateX(-50%); text-align: center; width: 75%;">
+                  <h2 style="margin: 0; color: #C41E3A; font-size: 24px; font-weight: bold; font-family: 'Georgia', serif; background: linear-gradient(135deg, #D4AF37 0%, #F4E4A6 50%, #D4AF37 100%); padding: 8px 25px; border-radius: 8px; border: 2px solid #B8860B; display: inline-block;">${eventName}</h2>
+                </div>
+                <!-- Student Name at 52% from top -->
+                <div style="position: absolute; top: 52%; left: 50%; transform: translateX(-50%); text-align: center; width: 75%;">
+                  <h1 style="margin: 0; color: #C41E3A; font-size: 28px; font-weight: bold; font-family: 'Georgia', serif; text-transform: uppercase;">${childName}</h1>
+                </div>
+                <!-- Date at 75% from top, 78% left -->
+                <div style="position: absolute; top: 75%; left: 78%; transform: translateX(-50%); text-align: center;">
+                  <p style="margin: 0; color: #555; font-size: 14px; font-weight: 600;">${eventDate}</p>
+                </div>
+              </div>
+            </div>
+
+            ${data.event_description ? `
+            <div style="margin-top: 25px; padding: 20px; background: #f7fafc; border-radius: 12px;">
+              <h3 style="color: #2d3748; font-size: 18px; margin: 0 0 10px;">📋 About the Event</h3>
+              <p style="margin: 0; color: #4a5568; font-size: 14px; line-height: 1.6;">${data.event_description}</p>
+            </div>
+            ` : ''}
+          </div>
+
+          <button class="download-btn" onclick="downloadCertificate('${childName.replace(/'/g, "\\'")}', '${eventName.replace(/'/g, "\\'")}')">
+            📥 Download Certificate as PDF
+          </button>
+
+          <div class="back-link">
+            <p style="color: rgba(255,255,255,0.9); font-size: 14px;">Thank you for participating!</p>
+          </div>
+        `;
+      } catch (err) {
+        console.error('Error loading certificate:', err);
+        document.getElementById('content').innerHTML = `
+          <div class="error">
+            <div style="font-size: 40px; margin-bottom: 15px;">❌</div>
+            <h3>Certificate Not Found</h3>
+            <p>This certificate link may be invalid or expired.</p>
+          </div>
+        `;
+      }
+    }
+
+    async function downloadCertificate(childName, eventName) {
+      const certElement = document.getElementById('certificate');
+      if (!certElement) {
+        alert('Certificate not found');
+        return;
+      }
+
+      const btn = event.target;
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '⏳ Generating PDF...';
+      btn.disabled = true;
+
+      try {
+        const { jsPDF } = window.jspdf;
+
+        const canvas = await html2canvas(certElement, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff'
+        });
+
+        const pdf = new jsPDF({
+          orientation: 'landscape',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const imgWidth = 297;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const pageHeight = 210;
+        const yOffset = imgHeight < pageHeight ? (pageHeight - imgHeight) / 2 : 0;
+
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, yOffset, imgWidth, imgHeight);
+
+        const fileName = `Participation_Certificate_${childName.replace(/\s+/g, '_')}_${eventName.replace(/\s+/g, '_')}.pdf`;
+        pdf.save(fileName);
+
+        btn.innerHTML = '✅ Downloaded!';
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        }, 2000);
+      } catch (err) {
+        console.error('PDF generation error:', err);
+        alert('Error generating PDF. Please try again.');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    // Load certificate on page load
+    loadCertificate();
+  </script>
+</body>
+</html>

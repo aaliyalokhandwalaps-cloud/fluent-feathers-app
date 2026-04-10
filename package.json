@@ -1,0 +1,45 @@
+{
+  "name": "fluent-feathers-lms",
+  "version": "2.0.0",
+  "description": "Complete Learning Management System",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "@remotion/bundler": "^4.0.441",
+    "@remotion/renderer": "^4.0.441",
+    "axios": "^1.6.2",
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^2.9.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "ffmpeg-static": "^5.3.0",
+    "firebase-admin": "^13.7.0",
+    "multer": "^1.4.5-lts.1",
+    "multer-storage-cloudinary": "^4.0.0",
+    "node-cron": "^3.0.3",
+    "pg": "^8.11.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "remotion": "^4.0.441"
+  },
+  "overrides": {
+    "lodash": "^4.18.1",
+    "brace-expansion": "^1.1.13",
+    "picomatch": "^2.3.2",
+    "path-to-regexp": "0.1.13",
+    "node-forge": "^1.4.0",
+    "loader-utils": "^2.0.4",
+    "@tootallnate/once": "^3.0.1",
+    "retry-request": "^8.0.2",
+    "teeny-request": "^10.1.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

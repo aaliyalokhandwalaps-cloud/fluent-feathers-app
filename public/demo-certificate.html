@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo Class Certificate - Fluent Feathers Academy</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #e6fffa 0%, #b2f5ea 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .header h1 {
+      color: #234e52;
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+    .header p {
+      color: #4a5568;
+      font-size: 16px;
+    }
+    .loading {
+      text-align: center;
+      padding: 60px;
+      color: #38b2ac;
+      font-size: 18px;
+    }
+    .error {
+      text-align: center;
+      padding: 60px;
+      color: #e53e3e;
+      background: #fff5f5;
+      border-radius: 12px;
+    }
+    .certificate-wrapper {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .download-btn {
+      display: block;
+      width: 100%;
+      max-width: 300px;
+      margin: 20px auto;
+      padding: 15px 30px;
+      background: linear-gradient(135deg, #38b2ac 0%, #319795 100%);
+      color: white;
+      border: none;
+      border-radius: 30px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(56, 178, 172, 0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .download-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(56, 178, 172, 0.5);
+    }
+    .download-btn:disabled {
+      background: #a0aec0;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .back-link {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .back-link a {
+      color: #38b2ac;
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Demo Class Certificate</h1>
+      <p>Fluent Feathers Academy By Aaliya</p>
+    </div>
+
+    <div id="content">
+      <div class="loading">
+        <div style="font-size: 40px; margin-bottom: 15px;">🎓</div>
+        Loading certificate...
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const appConfig = {
+      logoUrl: 'https://res.cloudinary.com/dsrc9bcns/image/upload/v1742401365/cld-sample-5.jpg'
+    };
+
+    async function loadCertificate() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const assessmentId = urlParams.get('id');
+
+      if (!assessmentId) {
+        document.getElementById('content').innerHTML = `
+          <div class="error">
+            <div style="font-size: 40px; margin-bottom: 15px;">❌</div>
+            <h3>Invalid Link</h3>
+            <p>No certificate ID provided.</p>
+          </div>
+        `;
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/demo-assessment/${assessmentId}`);
+        if (!res.ok) {
+          throw new Error('Certificate not found');
+        }
+
+        const data = await res.json();
+
+        if (!data || !data.assessment_type || data.assessment_type !== 'demo') {
+          throw new Error('Invalid certificate');
+        }
+
+        const childName = data.demo_child_name || 'Student';
+        const demoDate = data.demo_date ? new Date(data.demo_date).toLocaleDateString('en-IN', {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        }) : 'Demo Class';
+        const skills = data.skills ? JSON.parse(data.skills) : [];
+
+        // Format date nicely for certificate
+        const certDate = data.demo_date ? new Date(data.demo_date).toLocaleDateString('en-IN', {
+          day: 'numeric', month: 'long', year: 'numeric'
+        }) : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+        // Store data for PDF generation
+        window.certData = {
+          title: data.certificate_title || '',
+          name: childName,
+          date: certDate
+        };
+
+        document.getElementById('content').innerHTML = `
+          <div class="certificate-wrapper">
+            ${data.certificate_title ? `
+            <!-- Award Card Display (Certificate image only used in PDF) -->
+            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 3px solid #f59e0b; border-radius: 20px; padding: 40px; text-align: center; max-width: 700px; margin: 0 auto 20px;">
+              <div style="font-size: 60px; margin-bottom: 15px;">🏆</div>
+              <h2 style="color: #92400e; font-size: 28px; margin: 0 0 20px; font-family: 'Georgia', serif;">${data.certificate_title}</h2>
+              <p style="color: #b45309; font-size: 16px; margin: 0 0 10px;">This certificate is proudly presented to</p>
+              <h1 style="color: #C41E3A; font-size: 36px; margin: 0 0 20px; font-family: 'Georgia', serif; text-transform: uppercase; letter-spacing: 2px;">${childName}</h1>
+              <p style="color: #92400e; font-size: 14px; margin: 0;">for outstanding achievement & dedication</p>
+              <p style="color: #78716c; font-size: 14px; margin: 15px 0 0;">${certDate}</p>
+            </div>
+
+            <!-- Hidden certificate for PDF generation -->
+            <div id="certificate" style="position: absolute; left: -9999px; width: 800px;">
+              <div style="position: relative; width: 800px;">
+                <img id="cert-bg-img" src="https://res.cloudinary.com/dmqipms4f/image/upload/v1769931490/Pink_and_Red_Playful_Student_Certificate_kry0o6.png" style="width: 100%; display: block;" crossorigin="anonymous">
+                <div style="position: absolute; top: 26%; left: 50%; transform: translateX(-50%); text-align: center; width: 75%;">
+                  <h2 style="margin: 0; color: #C41E3A; font-size: 24px; font-weight: bold; font-family: 'Georgia', serif; background: linear-gradient(135deg, #D4AF37 0%, #F4E4A6 50%, #D4AF37 100%); padding: 8px 25px; border-radius: 8px; border: 2px solid #B8860B; display: inline-block;">${data.certificate_title}</h2>
+                </div>
+                <div style="position: absolute; top: 52%; left: 50%; transform: translateX(-50%); text-align: center; width: 75%;">
+                  <h1 style="margin: 0; color: #C41E3A; font-size: 28px; font-weight: bold; font-family: 'Georgia', serif; text-transform: uppercase;">${childName}</h1>
+                </div>
+                <div style="position: absolute; top: 75%; left: 78%; transform: translateX(-50%); text-align: center;">
+                  <p style="margin: 0; color: #555; font-size: 14px; font-weight: 600;">${certDate}</p>
+                </div>
+              </div>
+            </div>
+            ` : `
+            <!-- No certificate title - show simple demo badge -->
+            <div id="certificate" style="background: linear-gradient(135deg, #e6fffa 0%, #b2f5ea 50%, #81e6d9 100%); border: 4px solid #38b2ac; border-radius: 20px; padding: 30px; text-align: center; max-width: 700px; margin: 0 auto;">
+              <div style="font-size: 28px; margin-bottom: 12px;">🎓</div>
+              <h2 style="color: #234e52; margin-bottom: 15px;">Demo Class Completed!</h2>
+              <h1 style="color: #38b2ac; font-size: 32px; margin-bottom: 15px;">${childName}</h1>
+              <p style="color: #4b5563;">${demoDate}</p>
+            </div>
+            `}
+
+            ${skills.length > 0 ? `
+            <!-- Skills Observed -->
+            <div style="margin-top: 25px; padding: 20px; background: #f0fdf4; border-radius: 12px;">
+              <h3 style="color: #234e52; font-size: 18px; margin: 0 0 15px;">📝 Skills Observed During Demo</h3>
+              <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                ${skills.map(skill => `
+                <span style="background: #e6fffa; padding: 10px 15px; border-radius: 8px; border-left: 4px solid #38b2ac; font-size: 14px; color: #234e52; font-weight: 600;">✓ ${skill}</span>
+                `).join('')}
+              </div>
+            </div>
+            ` : ''}
+
+            ${data.performance_summary ? `
+            <div style="margin-top: 20px; padding: 20px; background: #e6fffa; border-radius: 12px; border-left: 4px solid #38b2ac;">
+              <h3 style="color: #234e52; font-size: 16px; margin: 0 0 10px;">📈 Demo Session Summary</h3>
+              <p style="margin: 0; color: #234e52; font-size: 14px; line-height: 1.6;">${data.performance_summary}</p>
+            </div>
+            ` : ''}
+
+            ${data.areas_of_improvement ? `
+            <div style="margin-top: 20px; padding: 20px; background: #fefce8; border-radius: 12px; border-left: 4px solid #eab308;">
+              <h3 style="color: #713f12; font-size: 16px; margin: 0 0 10px;">🎯 Recommended Focus Areas</h3>
+              <p style="margin: 0; color: #713f12; font-size: 14px; line-height: 1.6;">${data.areas_of_improvement}</p>
+            </div>
+            ` : ''}
+
+            ${data.teacher_comments ? `
+            <div style="margin-top: 20px; padding: 20px; background: #faf5ff; border-radius: 12px; border-left: 4px solid #B05D9E;">
+              <h3 style="color: #4a5568; font-size: 16px; margin: 0 0 10px;">💬 Teacher's Notes</h3>
+              <p style="margin: 0; color: #4a5568; font-size: 14px; line-height: 1.6; font-style: italic;">"${data.teacher_comments}"</p>
+            </div>
+            ` : ''}
+          </div>
+
+          <button class="download-btn" onclick="downloadCertificate('${childName.replace(/'/g, "\\'")}', '${demoDate.replace(/'/g, "\\'")}')">
+            📥 Download Certificate as PDF
+          </button>
+
+          <div class="back-link">
+            <p style="color: #718096; font-size: 14px;">Interested in enrolling? Contact us to continue the learning journey!</p>
+          </div>
+        `;
+      } catch (err) {
+        console.error('Error loading certificate:', err);
+        document.getElementById('content').innerHTML = `
+          <div class="error">
+            <div style="font-size: 40px; margin-bottom: 15px;">❌</div>
+            <h3>Certificate Not Found</h3>
+            <p>This certificate link may be invalid or expired.</p>
+          </div>
+        `;
+      }
+    }
+
+    async function downloadCertificate(childName, demoDate) {
+      const certElement = document.getElementById('certificate');
+      if (!certElement) {
+        alert('Certificate not found');
+        return;
+      }
+
+      const btn = event.target;
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '⏳ Generating PDF...';
+      btn.disabled = true;
+
+      try {
+        const { jsPDF } = window.jspdf;
+
+        const canvas = await html2canvas(certElement, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff'
+        });
+
+        const pdf = new jsPDF({
+          orientation: 'landscape',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const imgWidth = 297;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const pageHeight = 210;
+        const yOffset = imgHeight < pageHeight ? (pageHeight - imgHeight) / 2 : 0;
+
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, yOffset, imgWidth, imgHeight);
+
+        const fileName = `Demo_Certificate_${childName.replace(/\s+/g, '_')}.pdf`;
+        pdf.save(fileName);
+
+        btn.innerHTML = '✅ Downloaded!';
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        }, 2000);
+      } catch (err) {
+        console.error('PDF generation error:', err);
+        alert('Error generating PDF. Please try again.');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    // Load certificate on page load
+    loadCertificate();
+  </script>
+</body>
+</html>

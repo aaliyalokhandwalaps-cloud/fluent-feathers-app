@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Registration - Fluent Feathers Academy By Aaliya</title>
+  <link rel="icon" type="image/x-icon" id="favicon" href="/app-icon.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #B05D9E 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    .logo {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .logo img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 3px solid white;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    .logo h1 {
+      color: white;
+      font-size: 24px;
+      margin-top: 10px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    .event-header {
+      text-align: center;
+      margin-bottom: 25px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+    .event-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #B05D9E 0%, #764ba2 100%);
+      color: white;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .event-name {
+      font-size: 24px;
+      color: #2d3748;
+      margin-bottom: 15px;
+      line-height: 1.3;
+    }
+    .event-details {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+    }
+    .event-detail {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f7fafc;
+      padding: 8px 15px;
+      border-radius: 10px;
+      font-size: 14px;
+      color: #4a5568;
+    }
+    .event-detail span {
+      font-size: 18px;
+    }
+    .event-description {
+      background: #f7fafc;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 20px 0;
+      font-size: 14px;
+      color: #4a5568;
+      line-height: 1.6;
+    }
+    .spots-left {
+      text-align: center;
+      padding: 10px;
+      background: #e6fffa;
+      border-radius: 10px;
+      color: #234e52;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    .spots-left.full {
+      background: #fed7d7;
+      color: #c53030;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      color: #4a5568;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    .form-group label .required {
+      color: #e53e3e;
+    }
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 16px;
+      background: white;
+      transition: all 0.2s;
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #B05D9E;
+      box-shadow: 0 0 0 3px rgba(176, 93, 158, 0.1);
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #B05D9E 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 15px rgba(176, 93, 158, 0.4);
+    }
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(176, 93, 158, 0.5);
+    }
+    .submit-btn:disabled {
+      background: #a0aec0;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    .success-message {
+      text-align: center;
+      padding: 30px;
+    }
+    .success-message .icon {
+      font-size: 60px;
+      margin-bottom: 20px;
+    }
+    .success-message h2 {
+      color: #38a169;
+      margin-bottom: 15px;
+    }
+    .success-message p {
+      color: #4a5568;
+      line-height: 1.6;
+    }
+    .error-message {
+      background: #fed7d7;
+      color: #c53030;
+      padding: 12px 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      text-align: center;
+    }
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: white;
+    }
+    .loading .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .not-found {
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .not-found .icon {
+      font-size: 60px;
+      margin-bottom: 20px;
+    }
+    .not-found h2 {
+      color: #e53e3e;
+      margin-bottom: 10px;
+    }
+    .not-found p {
+      color: #718096;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      color: rgba(255,255,255,0.8);
+      font-size: 14px;
+    }
+    .footer a {
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <img id="brandLogo" src="/app-icon.png" alt="Fluent Feathers Academy By Aaliya">
+      <h1>Fluent Feathers Academy By Aaliya</h1>
+    </div>
+
+    <div id="content">
+      <div class="loading">
+        <div class="spinner"></div>
+        <p>Loading event details...</p>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>By <a href="https://www.instagram.com/fluentfeathersbyaaliya" target="_blank">@fluentfeathersbyaaliya</a></p>
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const eventId = urlParams.get('id');
+
+    async function loadEvent() {
+      if (!eventId) {
+        showNotFound('No event specified');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/public/event/${eventId}`);
+        if (!res.ok) {
+          const data = await res.json();
+          showNotFound(data.error || 'Event not found');
+          return;
+        }
+
+        const event = await res.json();
+        showEventForm(event);
+      } catch (err) {
+        showNotFound('Failed to load event');
+      }
+    }
+
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-IN', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+
+    function formatTime(timeStr) {
+      if (!timeStr) return '';
+      const [hours, minutes] = timeStr.split(':');
+      // Convert UTC time to IST (UTC + 5:30)
+      let istHour = parseInt(hours) + 5;
+      let istMin = parseInt(minutes) + 30;
+      if (istMin >= 60) {
+        istMin -= 60;
+        istHour += 1;
+      }
+      if (istHour >= 24) istHour -= 24;
+      const ampm = istHour >= 12 ? 'PM' : 'AM';
+      const hour12 = istHour % 12 || 12;
+      return `${hour12}:${istMin.toString().padStart(2, '0')} ${ampm} IST`;
+    }
+
+    function showEventForm(event) {
+      const spotsHtml = event.is_full
+        ? `<div class="spots-left full">Sorry, this event is full!</div>`
+        : event.spots_left
+          ? `<div class="spots-left">Only ${event.spots_left} spot${event.spots_left > 1 ? 's' : ''} left!</div>`
+          : '';
+
+      document.getElementById('content').innerHTML = `
+        <div class="card">
+          <div class="event-header">
+            <div class="event-badge">FREE EVENT</div>
+            <h2 class="event-name">${event.event_name}</h2>
+            <div class="event-details">
+              <div class="event-detail"><span>📅</span> ${formatDate(event.event_date)}</div>
+              <div class="event-detail"><span>🕐</span> ${formatTime(event.event_time)}</div>
+              ${event.event_duration ? `<div class="event-detail"><span>⏱️</span> ${event.event_duration}</div>` : ''}
+            </div>
+          </div>
+
+          ${event.event_description ? `<div class="event-description">${event.event_description}</div>` : ''}
+
+          ${spotsHtml}
+
+          ${event.is_full ? `
+            <p style="text-align: center; color: #718096;">Registration is closed for this event.</p>
+          ` : `
+            <div id="errorMsg" class="error-message" style="display: none;"></div>
+
+            <form id="registerForm" onsubmit="handleSubmit(event)">
+              <div class="form-group">
+                <label>Parent/Guardian Name <span class="required">*</span></label>
+                <input type="text" id="parentName" placeholder="Enter your name" required>
+              </div>
+
+              <div class="form-group">
+                <label>Child's Name <span class="required">*</span></label>
+                <input type="text" id="childName" placeholder="Enter child's name" required>
+              </div>
+
+              <div class="form-group">
+                <label>Child's Age</label>
+                <input type="text" id="childAge" placeholder="e.g., 5 years">
+              </div>
+
+              <div class="form-group">
+                <label>Email <span class="required">*</span></label>
+                <input type="email" id="email" placeholder="your@email.com" required>
+              </div>
+
+              <div class="form-group">
+                <label>Phone/WhatsApp <span class="required">*</span></label>
+                <input type="tel" id="phone" placeholder="+91 98765 43210" required>
+              </div>
+
+              <div class="form-group">
+                <label>Parent Timezone <span class="required">*</span></label>
+                <select id="parentTimezone" required></select>
+              </div>
+
+              <button type="submit" class="submit-btn" id="submitBtn">
+                Register Now
+              </button>
+            </form>
+          `}
+        </div>
+      `;
+    }
+
+    function showNotFound(message) {
+      document.getElementById('content').innerHTML = `
+        <div class="card">
+          <div class="not-found">
+            <div class="icon">😔</div>
+            <h2>Oops!</h2>
+            <p>${message}</p>
+          </div>
+        </div>
+      `;
+
+      initParentTimezoneSelector();
+    }
+
+    function buildTimezoneOptions(selectedTimezone) {
+      const preferred = [
+        'Asia/Kolkata', 'Asia/Dubai', 'Asia/Singapore', 'Europe/London',
+        'Europe/Berlin', 'America/New_York', 'America/Chicago',
+        'America/Los_Angeles', 'Australia/Sydney'
+      ];
+
+      let zones = preferred;
+      try {
+        if (typeof Intl.supportedValuesOf === 'function') {
+          const supported = Intl.supportedValuesOf('timeZone');
+          const merged = [...new Set([selectedTimezone, ...preferred, ...supported])].filter(Boolean);
+          zones = merged;
+        }
+      } catch (e) {}
+
+      return zones
+        .map((zone) => `<option value="${zone}" ${zone === selectedTimezone ? 'selected' : ''}>${zone.replace(/_/g, ' ')}</option>`)
+        .join('');
+    }
+
+    function initParentTimezoneSelector() {
+      const timezoneSelect = document.getElementById('parentTimezone');
+      if (!timezoneSelect) return;
+      const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
+      timezoneSelect.innerHTML = buildTimezoneOptions(browserTimezone);
+      timezoneSelect.value = browserTimezone;
+    }
+
+    function showSuccess(eventName) {
+      document.getElementById('content').innerHTML = `
+        <div class="card">
+          <div class="success-message">
+            <div class="icon">🎉</div>
+            <h2>Registration Successful!</h2>
+            <p>Thank you for registering for <strong>${eventName}</strong>!</p>
+            <p style="margin-top: 15px;">A confirmation email has been sent with all the event details.</p>
+            <p style="margin-top: 20px; font-size: 13px; color: #718096;">Please check your inbox (and spam folder) for the confirmation.</p>
+          </div>
+        </div>
+      `;
+    }
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+
+      const btn = document.getElementById('submitBtn');
+      const errorDiv = document.getElementById('errorMsg');
+      btn.disabled = true;
+      btn.textContent = 'Registering...';
+      errorDiv.style.display = 'none';
+
+      const data = {
+        parent_name: document.getElementById('parentName').value.trim(),
+        child_name: document.getElementById('childName').value.trim(),
+        child_age: document.getElementById('childAge').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        parent_timezone: document.getElementById('parentTimezone').value
+      };
+
+      try {
+        const res = await fetch(`/api/public/event/${eventId}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (res.ok) {
+          showSuccess(result.event_name);
+        } else {
+          errorDiv.textContent = result.error || 'Registration failed. Please try again.';
+          errorDiv.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Register Now';
+        }
+      } catch (err) {
+        errorDiv.textContent = 'Network error. Please check your connection and try again.';
+        errorDiv.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Register Now';
+      }
+    }
+
+    // Load logo from config
+    async function loadConfig() {
+      try {
+        const res = await fetch('/api/config');
+        const config = await res.json();
+        if (config.logoUrl) {
+          const logo = document.getElementById('brandLogo');
+          if (logo) logo.src = config.logoUrl;
+          const favicon = document.getElementById('favicon');
+          if (favicon) favicon.href = config.logoUrl;
+        }
+      } catch (e) {}
+    }
+
+    // Load event and config on page load
+    loadConfig();
+    loadEvent();
+  </script>
+</body>
+</html>
