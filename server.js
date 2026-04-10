@@ -28,15 +28,29 @@ function isAbsoluteHttpUrl(value) {
 }
 
 // ==================== CONFIG ====================
-const ADMIN_SECRET = process.env.ADMIN_SECRET || 'super_secret_change_this_in_production';
+// CRITICAL SECURITY: Require secure credentials in production
+const ADMIN_SECRET = process.env.ADMIN_SECRET;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const DEFAULT_CLASS = process.env.DEFAULT_CLASS_LINK || 'https://us04web.zoom.us/j/7288533155?pwd=Nng5N2l0aU12L0FQK245c0VVVHJBUT09';
 
-// Warn if using default secrets
-if (ADMIN_SECRET === 'super_secret_change_this_in_production') {
-  console.warn('⚠️  WARNING: Using default ADMIN_SECRET. Set ADMIN_SECRET env variable for production!');
-}
-if (!process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD === 'admin123') {
-  console.warn('⚠️  WARNING: Using default ADMIN_PASSWORD. Set ADMIN_PASSWORD env variable for production!');
+// Enforce security requirements in production
+if (process.env.NODE_ENV === 'production') {
+  if (!ADMIN_SECRET || ADMIN_SECRET.length < 32) {
+    console.error('❌ CRITICAL: ADMIN_SECRET not set or too short (min 32 chars). Set in environment variables.');
+    process.exit(1);
+  }
+  if (!ADMIN_PASSWORD || ADMIN_PASSWORD.length < 8) {
+    console.error('❌ CRITICAL: ADMIN_PASSWORD not set or too short (min 8 chars). Set in environment variables.');
+    process.exit(1);
+  }
+} else {
+  // Development warning only
+  if (!ADMIN_SECRET) {
+    console.warn('⚠️  WARNING: ADMIN_SECRET not set. Set ADMIN_SECRET env variable.');
+  }
+  if (!ADMIN_PASSWORD) {
+    console.warn('⚠️  WARNING: ADMIN_PASSWORD not set. Set ADMIN_PASSWORD env variable.');
+  }
 }
 
 // ==================== CLOUDINARY CONFIG ====================
@@ -389,6 +403,24 @@ initializeDatabaseConnection();
 
 // ==================== MIDDLEWARE ====================
 app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ limit: '20mb', extended: true }));
+
+// Set request timeout for all requests (30 seconds default)
+app.use((req, res, next) => {
+  req.setTimeout(30 * 1000);
+  res.setTimeout(30 * 1000);
+  next();
+});
+
+// Extended timeout for upload endpoints (10 minutes for file uploads)
+app.use((req, res, next) => {
+  if (req.path.includes('/upload') || req.path.includes('/annotate')) {
+    req.setTimeout(10 * 60 * 1000);
+    res.setTimeout(10 * 60 * 1000);
+  }
+  next();
+});
+
 app.use((req, res, next) => {
   const pathName = req.path || '';
   if (pathName === '/' || pathName.endsWith('.html')) {
@@ -1105,6 +1137,10 @@ const upload = multer({
 // Wrapper to handle multer upload errors properly
 const handleUpload = (fieldName) => {
   return (req, res, next) => {
+    // Set extended timeout for upload processing
+    req.setTimeout(10 * 60 * 1000);
+    res.setTimeout(10 * 60 * 1000);
+
     upload.single(fieldName)(req, res, (err) => {
       if (err) {
         console.error('❌ Upload error:', err.message, err);
@@ -1113,6 +1149,9 @@ const handleUpload = (fieldName) => {
         }
         if (err.message.includes('Cloudinary') || err.message.includes('cloudinary')) {
           return res.status(500).json({ error: 'Cloudinary upload failed: ' + err.message + '. Check Cloudinary credentials in Render.' });
+        }
+        if (err.message.includes('timeout') || err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT') {
+          return res.status(408).json({ error: 'Upload timed out. Please try again with a smaller file or check your connection.' });
         }
         return res.status(500).json({ error: 'Upload failed: ' + err.message });
       }
@@ -1243,7 +1282,7 @@ app.post('/api/admin/login', async (req, res) => {
     return res.status(400).json({ error: 'Password is required' });
   }
 
-  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const adminPassword = ADMIN_PASSWORD;
   if (password === adminPassword) {
     // Generate a session token
     const sessionToken = crypto.randomBytes(32).toString('hex');
@@ -1262,7 +1301,7 @@ app.post('/api/admin/login', async (req, res) => {
     return res.status(400).json({ error: 'Password is required' });
   }
 
-  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const adminPassword = ADMIN_PASSWORD;
   if (password === adminPassword) {
     // Generate a session token
     const sessionToken = crypto.randomBytes(32).toString('hex');
@@ -1327,7 +1366,7 @@ app.post('/api/backup/export', async (req, res) => {
   try {
     // Verify admin password from request body for security
     const adminPass = req.body.pass;
-    if (adminPass !== (process.env.ADMIN_PASSWORD || 'admin123')) {
+    if (adminPass !== ADMIN_PASSWORD) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -8440,6 +8479,23 @@ app.post('/api/sessions/:sessionId/cancel', async (req, res) => {
       }
     }
 
+    // Send cancellation push notification to admins
+    const sessionType = session.session_type || 'Private';
+    await sendPushToAdmins(
+      `❌ Class Cancelled - ${student?.name || 'Student'}`,
+      `${studentResult ? `Student: ${student.name}` : 'A class'} cancellation - ${sessionType} class on ${fallbackDate || session.session_date}. Reason: ${reason || 'Not specified'}. ${grant_makeup_credit ? 'Makeup credit granted.' : ''}`,
+      {
+        type: 'class_cancelled_admin',
+        sessionId: String(req.params.sessionId),
+        studentId: student?.id ? String(student.id) : '',
+        studentName: student?.name || 'Student',
+        sessionType: sessionType,
+        reason: reason || '',
+        makeupCreditGranted: !!grant_makeup_credit,
+        url: `${process.env.APP_URL || 'https://fluent-feathers-academy-lms.onrender.com'}/admin.html`
+      }
+    );
+
     clearAdminDashboardCache();
     res.json({
       success: true,
@@ -8453,7 +8509,7 @@ app.post('/api/sessions/:sessionId/cancel', async (req, res) => {
 // Manually resend a cancellation email to a parent (admin only)
 app.post('/api/admin/resend-cancel-email', async (req, res) => {
   const { pass, student_id, session_id } = req.body;
-  if (pass !== (process.env.ADMIN_PASSWORD || 'admin123')) {
+  if (pass !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   try {
@@ -8923,8 +8979,22 @@ app.post('/api/sessions/:sessionId/upload', handleUpload('file'), async (req, re
   if (!req.file) return res.status(400).json({ error: 'No file uploaded. If using Cloudinary, check credentials in Render environment variables.' });
   const col = { ppt:'ppt_file_path', recording:'recording_file_path', homework:'homework_file_path' }[req.body.materialType];
   if (!col) return res.status(400).json({ error: 'Invalid type' });
-  const client = await pool.connect();
+  
+  let client;
+  const uploadTimeoutTimer = setTimeout(() => {
+    console.error('Upload DB operation timeout for session:', req.params.sessionId);
+    if (client) try { client.release(); } catch(e) {}
+    if (!res.headersSent) {
+      res.status(408).json({ error: 'Database operation timed out. File was uploaded but could not be saved to session. Please try again.' });
+    }
+  }, 25000); // 25 second timeout for DB operations
+
   try {
+    client = await Promise.race([
+      pool.connect(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('DB connection timeout')), 10000))
+    ]);
+
     await client.query('BEGIN');
     // Get file path - Cloudinary returns URL in path/secure_url, local storage uses filename
     let filePath;
@@ -8957,12 +9027,17 @@ app.post('/api/sessions/:sessionId/upload', handleUpload('file'), async (req, re
       `, [s.id, session.group_id, req.params.sessionId, session.session_date, req.body.materialType.toUpperCase(), req.file.originalname, filePath]);
     }
     await client.query('COMMIT');
+    clearTimeout(uploadTimeoutTimer);
     res.json({ message: 'Material uploaded successfully!', filename: req.file.filename });
   } catch (err) {
-    await client.query('ROLLBACK');
-    res.status(500).json({ error: err.message });
+    clearTimeout(uploadTimeoutTimer);
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch(e) {}
+    }
+    console.error('Upload error:', err.message);
+    res.status(500).json({ error: 'Upload failed: ' + err.message });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 });
 
@@ -9571,6 +9646,21 @@ app.post('/api/public/demo-register', async (req, res) => {
     }
 
     console.log(`✅ New demo registration from website: ${child_name} (${program_interest}) - ${parent_name} <${email}>`);
+    
+    // Send admin push for demo lead form fill
+    await sendPushToAdmins(
+      `🎯 New Demo Registration: ${child_name}`,
+      `${child_name} (Age: ${student_grade || 'N/A'}) registered for ${program_interest || 'Demo Class'}. Parent: ${parent_name}, Email: ${email}`,
+      {
+        type: 'demo_lead_registration_admin',
+        programInterest: program_interest || 'Demo',
+        childName: child_name,
+        parentName: parent_name,
+        email: email,
+        url: `${process.env.APP_URL || 'https://fluent-feathers-academy-lms.onrender.com'}/admin.html`
+      }
+    );
+    
     res.json({ success: true, message: 'Demo class registration successful!' });
   } catch (err) {
     console.error('Demo registration error:', err);
@@ -9660,6 +9750,21 @@ app.post('/api/public/summer-camp-register', async (req, res) => {
     }
 
     console.log(`✅ New summer camp registration from website: ${child_name} - ${parent_name} <${email}>`);
+    
+    // Send admin push for summer camp form fill
+    await sendPushToAdmins(
+      `☀️ New Summer Camp Registration: ${child_name}`,
+      `${child_name} enrolled in Summer Camp. Parent: ${parent_name}, Email: ${email}${program_interest ? `, Program: ${program_interest}` : ''}`,
+      {
+        type: 'summer_camp_registration_admin',
+        childName: child_name,
+        parentName: parent_name,
+        email: email,
+        programInterest: program_interest || '',
+        url: `${process.env.APP_URL || 'https://fluent-feathers-academy-lms.onrender.com'}/admin.html`
+      }
+    );
+    
     res.json({ success: true, message: 'Summer camp registration successful!' });
   } catch (err) {
     console.error('Summer camp registration error:', err);
@@ -9673,6 +9778,36 @@ app.get('/api/summer-camp-leads', async (req, res) => {
     const r = await pool.query("SELECT * FROM demo_leads WHERE type = 'summer_camp' ORDER BY created_at DESC");
     res.json(r.rows);
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Notify parents when teacher/admin joins class
+app.post('/api/admin/notify-teacher-joined', async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    if (!sessionId) return res.status(400).json({ error: 'sessionId required' });
+
+    const result = await notifyParentsTeacherJoinedSession(sessionId);
+    
+    if (!result.success) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Could not notify parents', 
+        reason: result.reason,
+        details: result.alreadySent ? 'Notification already sent for this session' : undefined
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Teachers joined notification sent to ${result.sentCount} parent(s)`,
+      recipients: result.recipients,
+      sentCount: result.sentCount,
+      alreadySent: result.alreadySent
+    });
+  } catch (err) {
+    console.error('Teacher joined notify error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -13272,6 +13407,22 @@ app.post('/api/challenges', async (req, res) => {
       }
     }
 
+    // Send admin push for challenge created
+    if (students.rows.length > 0) {
+      await sendPushToAdmins(
+        `📝 New Challenge Created: ${title}`,
+        `Challenge "${title}" assigned to ${Students.rows.length} student(s). Due: ${dueDate}`,
+        {
+          type: 'challenge_created_admin',
+          challengeId: String(challengeId),
+          challengeTitle: title,
+          studentCount: students.rows.length,
+          dueDate: dueDate,
+          url: `${process.env.APP_URL || 'https://fluent-feathers-academy-lms.onrender.com'}/admin.html`
+        }
+      );
+    }
+
     res.json({ success: true, challenge, emailsSent });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -14746,7 +14897,7 @@ app.put('/api/assessments/:id', async (req, res) => {
 // Debug endpoint: inspect push token readiness for parents/admins
 app.post('/api/admin/push-token-status', async (req, res) => {
   const { pass, email } = req.body || {};
-  if (pass !== (process.env.ADMIN_PASSWORD || 'admin123')) {
+  if (pass !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -14819,7 +14970,7 @@ app.post('/api/admin/push-token-status', async (req, res) => {
 // Debug endpoint: send a test push notification to all admin tokens
 app.post('/api/admin/test-push', async (req, res) => {
   const { pass, title, body } = req.body || {};
-  if (pass !== (process.env.ADMIN_PASSWORD || 'admin123')) {
+  if (pass !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   try {
