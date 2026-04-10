@@ -3482,6 +3482,60 @@ async function sendAdminDemoReminderPush(session, hoursBeforeClass) {
   });
 }
 
+async function sendAdminGroupReminderPush(session, hoursBeforeClass) {
+  if (!session?.is_group || !session?.id) return;
+
+  const hourLabel = `${hoursBeforeClass} ${hoursBeforeClass === 1 ? 'hour' : 'hours'}`;
+  const title = `Group class starts in ${hourLabel}`;
+  const body = [
+    `${session.group_name || 'Group'} class starts in ${hourLabel}`,
+    session.student_name ? `Student: ${session.student_name}` : '',
+    session.parent_name ? `Parent: ${session.parent_name}` : '',
+    session.parent_email ? `Email: ${session.parent_email}` : ''
+  ].filter(Boolean).join(' - ');
+  const appUrl = (process.env.APP_URL || 'https://fluent-feathers-academy-lms.onrender.com').replace(/\/$/, '');
+
+  await sendPushToAdmins(title, body, {
+    type: `admin_group_reminder_${hoursBeforeClass}hr`,
+    notificationType: 'group-reminder',
+    sessionId: String(session.id),
+    groupId: String(session.group_id || ''),
+    groupName: String(session.group_name || ''),
+    hoursBeforeClass: String(hoursBeforeClass),
+    studentName: String(session.student_name || ''),
+    parentName: String(session.parent_name || ''),
+    parentEmail: String(session.parent_email || ''),
+    url: `${appUrl}/admin.html`,
+    notificationTag: `admin-group-reminder-${hoursBeforeClass}hr-${session.id}`
+  });
+}
+
+async function sendAdminPrivateReminderPush(session, hoursBeforeClass) {
+  if (session?.is_group || session?.is_demo || !session?.id) return;
+
+  const hourLabel = `${hoursBeforeClass} ${hoursBeforeClass === 1 ? 'hour' : 'hours'}`;
+  const title = `Private class starts in ${hourLabel}`;
+  const body = [
+    `${session.student_name || 'Student'} private class starts in ${hourLabel}`,
+    session.parent_name ? `Parent: ${session.parent_name}` : '',
+    session.parent_email ? `Email: ${session.parent_email}` : ''
+  ].filter(Boolean).join(' - ');
+  const appUrl = (process.env.APP_URL || 'https://fluent-feathers-academy-lms.onrender.com').replace(/\/$/, '');
+
+  await sendPushToAdmins(title, body, {
+    type: `admin_private_reminder_${hoursBeforeClass}hr`,
+    notificationType: 'private-reminder',
+    sessionId: String(session.id),
+    studentId: String(session.student_id || ''),
+    hoursBeforeClass: String(hoursBeforeClass),
+    studentName: String(session.student_name || ''),
+    parentName: String(session.parent_name || ''),
+    parentEmail: String(session.parent_email || ''),
+    url: `${appUrl}/admin.html`,
+    notificationTag: `admin-private-reminder-${hoursBeforeClass}hr-${session.id}`
+  });
+}
+
 async function sendEmail(to, subject, html, recipientName, emailType, options = {}) {
   const normalizedEmailType = String(emailType || '').trim();
   const effectiveSubject =
@@ -5710,6 +5764,12 @@ async function checkAndSendReminders() {
             if (session.is_demo) {
               await sendAdminDemoReminderPush(session, 5);
             }
+            if (session.is_group) {
+              await sendAdminGroupReminderPush(session, 5);
+            }
+            if (!session.is_group && !session.is_demo) {
+              await sendAdminPrivateReminderPush(session, 5);
+            }
             if ((pushResult?.sent || 0) > 0) {
               console.log(`✅ Sent 5-hour ${sessionTypeLabel} push reminder to ${session.parent_email} for Session #${session.session_number} (ID:${session.id})`);
             } else {
@@ -5777,6 +5837,12 @@ async function checkAndSendReminders() {
             const pushResult = await sendClassReminderPush(session, 1);
             if (session.is_demo) {
               await sendAdminDemoReminderPush(session, 1);
+            }
+            if (session.is_group) {
+              await sendAdminGroupReminderPush(session, 1);
+            }
+            if (!session.is_group && !session.is_demo) {
+              await sendAdminPrivateReminderPush(session, 1);
             }
             if ((pushResult?.sent || 0) > 0) {
               console.log(`✅ Sent 1-hour ${sessionTypeLabel} push reminder to ${session.parent_email} for Session #${session.session_number} (ID:${session.id})`);
@@ -14275,6 +14341,22 @@ app.post('/api/assessments', async (req, res) => {
             reportCardEmailHTML,
             student.rows[0].parent_name,
             'Report Card'
+          );
+
+          // Send push notification to parent
+          await sendPushToParentByEmail(
+            student.rows[0].parent_email,
+            `📊 Monthly Progress Report - ${student.rows[0].name}`,
+            `Your child's monthly progress report for ${monthNames[month - 1]} ${year} is ready!`,
+            {
+              type: 'monthly_assessment',
+              studentId: student_id,
+              assessmentId: result.rows[0].id,
+              studentName: student.rows[0].name,
+              month: month,
+              year: year,
+              url: `${process.env.APP_URL || 'https://fluent-feathers-academy-lms.onrender.com'}/parent.html`
+            }
           );
 
         }
