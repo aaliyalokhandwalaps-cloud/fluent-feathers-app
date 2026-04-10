@@ -5660,7 +5660,7 @@ async function checkAndSendReminders() {
         // Check if we need to send 5-hour reminder (widened window: 4.5 to 5.5 hours for reliability)
         if (hoursDiff > 4.5 && hoursDiff <= 5.5) {
           const emailType5hr = session.is_demo ? 'Reminder-5hrs-Demo' : session.is_group ? 'Reminder-5hrs-Group' : 'Reminder-5hrs';
-          const sidCheck = session.is_demo ? `DEMO:${session.id}` : session.id;
+          const sidCheck = session.is_demo ? `DEMO:${session.id}` : (session.is_group ? `GROUP:${session.id}` : `PRIVATE:${session.id}`);
           const scheduleKey5hr = String(session.full_datetime || '');
           console.log(`⏰ ${sessionTypeLabel} Session #${session.session_number} (ID:${session.id}) is within 5-hour window, checking if reminder already sent...`);
           // Check if 5-hour reminder already sent for this SPECIFIC session using unique session ID
@@ -5697,7 +5697,7 @@ async function checkAndSendReminders() {
             });
 
             const subjectPrefix = session.is_demo ? `🎯 Demo Class Reminder` : session.is_group ? `⏰ Group Class Reminder (${session.group_name})` : '⏰ Class Reminder';
-            const sidLabel = session.is_demo ? `DEMO:${session.id}` : session.id;
+            const sidLabel = session.is_demo ? `DEMO:${session.id}` : (session.is_group ? `GROUP:${session.id}` : `PRIVATE:${session.id}`);
             const sent = await sendEmail(
               session.parent_email,
               `${subjectPrefix} - Ready for today's class in 5 hours [SID:${sidLabel}] [UTC:${scheduleKey5hr}]`,
@@ -5728,7 +5728,7 @@ async function checkAndSendReminders() {
         // Check if we need to send 1-hour reminder (widened window: 0.5 to 1.5 hours for reliability)
         if (hoursDiff > 0.5 && hoursDiff <= 1.5) {
           const emailType1hr = session.is_demo ? 'Reminder-1hr-Demo' : session.is_group ? 'Reminder-1hr-Group' : 'Reminder-1hr';
-          const sidCheck1hr = session.is_demo ? `DEMO:${session.id}` : session.id;
+          const sidCheck1hr = session.is_demo ? `DEMO:${session.id}` : (session.is_group ? `GROUP:${session.id}` : `PRIVATE:${session.id}`);
           const scheduleKey1hr = String(session.full_datetime || '');
           console.log(`⏰ ${sessionTypeLabel} Session #${session.session_number} (ID:${session.id}) is within 1-hour window, checking if reminder already sent...`);
           // Check if 1-hour reminder already sent for this SPECIFIC session using unique session ID
@@ -5765,7 +5765,7 @@ async function checkAndSendReminders() {
             });
 
             const subjectPrefix1hr = session.is_demo ? `🎯 Demo Class Reminder` : session.is_group ? `⏰ Group Class Reminder (${session.group_name})` : '⏰ Class Reminder';
-            const sidLabel1hr = session.is_demo ? `DEMO:${session.id}` : session.id;
+            const sidLabel1hr = session.is_demo ? `DEMO:${session.id}` : (session.is_group ? `GROUP:${session.id}` : `PRIVATE:${session.id}`);
             const sent = await sendEmail(
               session.parent_email,
               `${subjectPrefix1hr} - Ready for today's class in 1 hour [SID:${sidLabel1hr}] [UTC:${scheduleKey1hr}]`,
