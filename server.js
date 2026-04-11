@@ -8615,6 +8615,7 @@ app.get('/api/sessions/:sessionId/details', async (req, res) => {
       }
     }
 
+    res.type('application/json');
     res.json(session);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -8627,6 +8628,22 @@ app.put('/api/sessions/:sessionId/topic', async (req, res) => {
     const { topic } = req.body;
     await pool.query('UPDATE sessions SET session_topic = $1 WHERE id = $2', [topic || null, req.params.sessionId]);
     res.json({ message: 'Session topic saved successfully!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/sessions/:sessionId/attendance', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const attendance = await pool.query(
+      `SELECT sa.student_id, sa.attendance, st.name AS student_name
+       FROM session_attendance sa
+       JOIN students st ON st.id = sa.student_id
+       WHERE sa.session_id = $1`,
+      [sessionId]
+    );
+    res.json(attendance.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -8721,9 +8738,12 @@ app.get('/api/sessions/:sessionId/group-attendance', async (req, res) => {
     // If no records exist, get the group_id and create attendance for booked students only
     if (result.rows.length === 0) {
       const session = await pool.query('SELECT group_id, session_date FROM sessions WHERE id = $1', [req.params.sessionId]);
+      if (session.rows.length === 0) {
+        return res.status(404).json({ error: 'Session not found' });
+      }
       if (session.rows[0]?.group_id) {
         const groupId = session.rows[0].group_id;
-        const sessionDate = session.rows[0].session_date;
+        const sessionDate = session.rows[0].session_date || new Date().toISOString();
 
         // Check if this group uses session_attendance for booking (has any attendance records for any session)
         const hasBookings = await pool.query(
@@ -8773,6 +8793,7 @@ app.get('/api/sessions/:sessionId/group-attendance', async (req, res) => {
       }
     }
 
+    res.type('application/json');
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });

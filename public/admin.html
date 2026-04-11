@@ -6690,10 +6690,17 @@ if (dueEl) {
     async function openSessionModal(sessionId, sessionType) {
       try {
         const res = await fetch(`/api/sessions/${sessionId}/details`);
-        const session = await res.json();
-        document.getElementById('modalSessionTitle').textContent = `Session #${session.session_number} - ${session.session_type}`;
-
-        // Build view links for existing materials with proper file type detection
+        if (!res.ok) {
+        const raw = await res.text();
+        throw new Error(`Failed to load session details (${res.status})${raw ? `: ${raw.substring(0, 200)}` : ''}`);
+      }
+      const detailsContentType = res.headers.get('content-type') || '';
+      if (!detailsContentType.includes('application/json')) {
+        const raw = await res.text();
+        throw new Error(`Unexpected content type for session details: ${detailsContentType}. Response: ${raw.substring(0, 200)}`);
+      }
+      const session = await res.json();
+      document.getElementById('modalSessionTitle').textContent = `Session #${session.session_number} - ${session.session_type}`;
         const pptUrl = buildMaterialUrl(session.ppt_file_path);
         const recUrl = buildMaterialUrl(session.recording_file_path);
         const hwUrl = buildMaterialUrl(session.homework_file_path);
@@ -6800,15 +6807,28 @@ if (dueEl) {
         </div>
         `;
 
-        if (sessionType === 'Group') {
+        const normalizedSessionType = String(sessionType || '').trim();
+        if (normalizedSessionType === 'Group' || session.session_type === 'Group') {
           const attRes = await fetch(`/api/sessions/${sessionId}/group-attendance`);
+          if (!attRes.ok) {
+            const raw = await attRes.text();
+            throw new Error(`Failed to load group attendance (${attRes.status})${raw ? `: ${raw.substring(0, 200)}` : ''}`);
+          }
+          const attendanceContentType = attRes.headers.get('content-type') || '';
+          if (!attendanceContentType.includes('application/json')) {
+            const raw = await attRes.text();
+            throw new Error(`Unexpected content type for group attendance: ${attendanceContentType}. Response: ${raw.substring(0, 200)}`);
+          }
           let students = await attRes.json();
           // Filter out inactive students
           students = students.filter(s => s.is_active);
+          const addStudentButton = session.group_id ?
+            `<div style="margin-bottom:12px;">
+              <button onclick="addStudentToSpecificSession(${sessionId}, ${session.group_id})" class="btn btn-sm" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; font-weight: 600;">🎫 Add Student (Makeup)</button>
+            </div>` :
+            `<div style="margin-bottom:12px; color:#e53e3e; font-weight:600;">Cannot add student: group ID missing for this session.</div>`;
           content += `<h3 style="margin-top:20px;">Group Attendance</h3>
-          <div style="margin-bottom:12px;">
-            <button onclick="addStudentToSpecificSession(${sessionId}, ${session.group_id})" class="btn btn-sm" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; font-weight: 600;">🎫 Add Student (Makeup)</button>
-          </div>
+          ${addStudentButton}
           <p style="color:#718096; font-size:0.85rem; margin-bottom:10px;">⚠️ Excused = Absent with makeup credit | ✗ Unexcused = Absent without makeup credit</p>
           <table><thead><tr><th>Student</th><th>Current Status</th><th>Action</th></tr></thead><tbody>` + students.map(s => {
             const statusClass = s.attendance === 'Present' ? 'att-badge-present' : s.attendance === 'Excused' ? 'att-badge-excused' : (s.attendance === 'Absent' || s.attendance === 'Unexcused') ? 'att-badge-absent' : 'att-badge-pending';
@@ -8107,16 +8127,25 @@ async function saveEditedPayment() {
     // Add student to specific group session using makeup credit
     async function addStudentToSpecificSession(sessionId, groupId) {
       try {
+        if (!groupId) {
+          throw new Error('Group ID is missing for this session');
+        }
         // Get group students
         const studentsRes = await fetch(`/api/groups/${groupId}/students`);
+        if (!studentsRes.ok) {
+          throw new Error(`Failed to load group students (${studentsRes.status})`);
+        }
         const students = await studentsRes.json();
 
         // Filter students who are not already in this session
         const availableStudents = [];
+        const attendanceRes = await fetch(`/api/sessions/${sessionId}/attendance`);
+        if (!attendanceRes.ok) {
+          throw new Error(`Failed to load session attendance (${attendanceRes.status})`);
+        }
+        const attendance = await attendanceRes.json();
+
         for (const student of students) {
-          // Check if student is already in this session
-          const attendanceRes = await fetch(`/api/sessions/${sessionId}/attendance`);
-          const attendance = await attendanceRes.json();
           const isEnrolled = attendance.some(a => a.student_id === student.id);
           if (!isEnrolled) {
             availableStudents.push(student);
@@ -9816,6 +9845,15 @@ async function saveEditedPayment() {
 
       try {
         const res = await fetch(`/api/sessions/${sessionId}/group-attendance`);
+        if (!res.ok) {
+          const raw = await res.text();
+          throw new Error(`Failed to load group students (${res.status})${raw ? `: ${raw.substring(0, 200)}` : ''}`);
+        }
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          const raw = await res.text();
+          throw new Error(`Invalid response type for group students: ${contentType}. Response: ${raw.substring(0, 200)}`);
+        }
         const students = await res.json();
         if (!Array.isArray(students) || students.length === 0) {
           container.innerHTML = '<p style="color:#718096;">No students found for this group session.</p>';
