@@ -8014,7 +8014,7 @@ async function saveEditedPayment() {
     async function enrollStudentsInGroup() {
       const groupId = document.getElementById('groupEnrollGroup').value;
 
-      if (!confirm('Merge all matching private slots in this group into group classes?\n\nOnly slots where 2 or more students already share the exact same date and time will be merged. Individual session counts and makeup balances will stay unchanged.')) {
+      if (!confirm('Merge all matching private slots in this group into group classes?\n\nThis includes slots where 2 or more students share the exact same date and time, or a private session that already matches an existing group slot. Individual session counts and makeup balances will stay unchanged.')) {
         return;
       }
 

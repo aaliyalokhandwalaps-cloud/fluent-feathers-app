@@ -7958,6 +7958,16 @@ app.get('/api/groups/:groupId/matching-private-sessions', async (req, res) => {
       ORDER BY s.session_date, s.session_time, st.name
     `, [req.params.groupId])).rows;
 
+    const groupSessions = (await pool.query(`
+      SELECT session_date, session_time, id
+      FROM sessions
+      WHERE group_id = $1
+        AND session_type = 'Group'
+        AND status IN ('Pending', 'Scheduled')
+    `, [req.params.groupId])).rows;
+
+    const groupSessionMap = new Map(groupSessions.map(gs => [`${gs.session_date}|${gs.session_time}`, gs.id]));
+
     const grouped = new Map();
     for (const row of rows) {
       const key = `${row.session_date}|${row.session_time}`;
@@ -7965,7 +7975,8 @@ app.get('/api/groups/:groupId/matching-private-sessions', async (req, res) => {
         grouped.set(key, {
           session_date: row.session_date,
           session_time: row.session_time,
-          students: []
+          students: [],
+          existing_group_session_id: groupSessionMap.get(key) || null
         });
       }
       grouped.get(key).students.push({
@@ -7980,7 +7991,7 @@ app.get('/api/groups/:groupId/matching-private-sessions', async (req, res) => {
     }
 
     const matches = Array.from(grouped.values())
-      .filter(slot => slot.students.length >= 2)
+      .filter(slot => slot.students.length >= 2 || slot.existing_group_session_id)
       .map(slot => ({
         ...slot,
         student_count: slot.students.length
@@ -10659,6 +10670,7 @@ app.post('/api/sessions/:sessionId/add-student-makeup', async (req, res) => {
     `, [student_id, sess.session_date, sess.session_time]);
 
     const hasPrivate = privateSession.rows.length > 0;
+    const privateSessionId = hasPrivate ? privateSession.rows[0].id : null;
 
     if (!hasPrivate) {
       // Require makeup credit
@@ -10687,8 +10699,20 @@ app.post('/api/sessions/:sessionId/add-student-makeup', async (req, res) => {
       [sessionId, student_id, 'Pending']
     );
 
-    // Increment remaining_sessions since this is a makeup session
-    await client.query('UPDATE students SET remaining_sessions = remaining_sessions + 1 WHERE id = $1', [student_id]);
+    // If private session exists and student is merged into group, cancel that duplicate private session
+    if (privateSessionId) {
+      await client.query(
+        `UPDATE sessions
+         SET status = 'Cancelled', cancelled_by = 'System', teacher_notes = COALESCE(teacher_notes, '') || $1
+         WHERE id = $2`,
+        [`\n[Auto-cancelled because student merged into group session ${sessionId}]`, privateSessionId]
+      );
+    }
+
+    // Only increment remaining_sessions when this is actually a makeup credit use
+    if (!hasPrivate) {
+      await client.query('UPDATE students SET remaining_sessions = remaining_sessions + 1 WHERE id = $1', [student_id]);
+    }
 
     await client.query('COMMIT');
 
