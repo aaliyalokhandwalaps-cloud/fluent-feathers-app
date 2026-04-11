@@ -10652,8 +10652,8 @@ app.post('/api/sessions/:sessionId/add-student-makeup', async (req, res) => {
     const privateSession = await client.query(`
       SELECT s.id FROM sessions s
       JOIN session_attendance sa ON s.id = sa.session_id
-      WHERE sa.student_id = $1 AND s.session_type = 'Private' AND s.session_date = $2 AND s.start_time = $3
-    `, [student_id, sess.session_date, sess.start_time]);
+      WHERE sa.student_id = $1 AND s.session_type = 'Private' AND s.session_date = $2 AND s.session_time = $3
+    `, [student_id, sess.session_date, sess.session_time]);
 
     const hasPrivate = privateSession.rows.length > 0;
 
