@@ -10584,8 +10584,8 @@ app.post('/api/sessions/:sessionId/add-student-makeup', async (req, res) => {
     const { sessionId } = req.params;
     const { student_id, credit_id } = req.body;
 
-    if (!student_id || !credit_id) {
-      return res.status(400).json({ error: 'student_id and credit_id are required' });
+    if (!student_id) {
+      return res.status(400).json({ error: 'student_id is required' });
     }
 
     await client.query('BEGIN');
@@ -10627,23 +10627,40 @@ app.post('/api/sessions/:sessionId/add-student-makeup', async (req, res) => {
       return res.status(400).json({ error: 'Student is already enrolled in this session' });
     }
 
-    // Verify makeup credit exists and is available
-    const credit = await client.query('SELECT * FROM makeup_classes WHERE id = $1 AND status = $2 AND student_id = $3', [credit_id, 'Available', student_id]);
-    if (credit.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'Makeup credit not found, already used, or belongs to different student' });
+    // Check if student has a private session at the same time (to allow adding to group without consuming credit)
+    const privateSession = await client.query(`
+      SELECT s.id FROM sessions s
+      JOIN session_attendance sa ON s.id = sa.session_id
+      WHERE sa.student_id = $1 AND s.session_type = 'Private' AND s.session_date = $2 AND s.start_time = $3
+    `, [student_id, sess.session_date, sess.start_time]);
+
+    const hasPrivate = privateSession.rows.length > 0;
+
+    if (!hasPrivate) {
+      // Require makeup credit
+      if (!credit_id) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'credit_id is required since no private session found at this time' });
+      }
+
+      // Verify makeup credit exists and is available
+      const credit = await client.query('SELECT * FROM makeup_classes WHERE id = $1 AND status = $2 AND student_id = $3', [credit_id, 'Available', student_id]);
+      if (credit.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Makeup credit not found, already used, or belongs to different student' });
+      }
+
+      // Mark makeup credit as used
+      await client.query(
+        `UPDATE makeup_classes SET status = 'Scheduled', used_date = CURRENT_DATE, scheduled_session_id = $1 WHERE id = $2`,
+        [sessionId, credit_id]
+      );
     }
 
     // Add student to session attendance
     await client.query(
       'INSERT INTO session_attendance (session_id, student_id, attendance) VALUES ($1, $2, $3)',
       [sessionId, student_id, 'Pending']
-    );
-
-    // Mark makeup credit as used
-    await client.query(
-      `UPDATE makeup_classes SET status = 'Scheduled', used_date = CURRENT_DATE, scheduled_session_id = $1 WHERE id = $2`,
-      [sessionId, credit_id]
     );
 
     // Increment remaining_sessions since this is a makeup session
