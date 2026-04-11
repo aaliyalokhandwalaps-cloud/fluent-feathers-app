@@ -6806,6 +6806,9 @@ if (dueEl) {
           // Filter out inactive students
           students = students.filter(s => s.is_active);
           content += `<h3 style="margin-top:20px;">Group Attendance</h3>
+          <div style="margin-bottom:12px;">
+            <button onclick="addStudentToSpecificSession(${sessionId}, ${session.group_id})" class="btn btn-sm" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; font-weight: 600;">🎫 Add Student (Makeup)</button>
+          </div>
           <p style="color:#718096; font-size:0.85rem; margin-bottom:10px;">⚠️ Excused = Absent with makeup credit | ✗ Unexcused = Absent without makeup credit</p>
           <table><thead><tr><th>Student</th><th>Current Status</th><th>Action</th></tr></thead><tbody>` + students.map(s => {
             const statusClass = s.attendance === 'Present' ? 'att-badge-present' : s.attendance === 'Excused' ? 'att-badge-excused' : (s.attendance === 'Absent' || s.attendance === 'Unexcused') ? 'att-badge-absent' : 'att-badge-pending';
@@ -8098,6 +8101,109 @@ async function saveEditedPayment() {
         }
       } catch (err) {
         alert('❌ Error: ' + err.message);
+      }
+    }
+
+    // Add student to specific group session using makeup credit
+    async function addStudentToSpecificSession(sessionId, groupId) {
+      try {
+        // Get group students with makeup credits
+        const studentsRes = await fetch(`/api/groups/${groupId}/students`);
+        const students = await studentsRes.json();
+
+        // Filter students who have makeup credits and are not already in this session
+        const availableStudents = [];
+        for (const student of students) {
+          if (student.makeup_credits > 0) {
+            // Check if student is already in this session
+            const attendanceRes = await fetch(`/api/sessions/${sessionId}/attendance`);
+            const attendance = await attendanceRes.json();
+            const isEnrolled = attendance.some(a => a.student_id === student.id);
+            if (!isEnrolled) {
+              availableStudents.push(student);
+            }
+          }
+        }
+
+        if (availableStudents.length === 0) {
+          alert('No students with available makeup credits found for this session.');
+          return;
+        }
+
+        // Show modal to select student and credit
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+        modal.innerHTML = `
+          <div style="background:white;border-radius:14px;max-width:500px;width:100%;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <h3 style="margin:0 0 8px;color:#2d3748;">🎫 Add Student to Session (Makeup Credit)</h3>
+            <p style="color:#718096;font-size:0.9rem;margin:0 0 20px;">Add a student to this specific session using their makeup credit.</p>
+
+            <form id="addToSessionForm">
+              <div style="margin-bottom:16px;">
+                <label style="display:block;font-weight:600;color:#4a5568;margin-bottom:6px;">Select Student *</label>
+                <select id="studentSelect" required style="width:100%;padding:10px;border:1px solid #cbd5e0;border-radius:6px;font-size:0.95rem;">
+                  <option value="">Choose a student...</option>
+                  ${availableStudents.map(s => `<option value="${s.id}">${s.name} (${s.makeup_credits} makeup credits)</option>`).join('')}
+                </select>
+              </div>
+
+              <div style="margin-bottom:20px;">
+                <label style="display:block;font-weight:600;color:#4a5568;margin-bottom:6px;">Makeup Credit ID *</label>
+                <input type="number" id="creditId" placeholder="Enter makeup credit ID" required
+                  style="width:100%;padding:10px;border:1px solid #cbd5e0;border-radius:6px;font-size:0.95rem;">
+                <small style="color:#718096;font-size:0.8rem;">You can find credit IDs in the student's profile or database</small>
+              </div>
+
+              <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button type="button" onclick="this.closest('.modal').remove()"
+                  style="background:#e2e8f0;color:#4a5568;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:600;">Cancel</button>
+                <button type="submit" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-weight:600;">✅ Add to Session</button>
+              </div>
+            </form>
+          </div>
+        `;
+
+        modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+        document.body.appendChild(modal);
+
+        // Handle form submission
+        document.getElementById('addToSessionForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const studentId = document.getElementById('studentSelect').value;
+          const creditId = document.getElementById('creditId').value;
+
+          if (!studentId || !creditId) {
+            alert('Please fill in all fields');
+            return;
+          }
+
+          try {
+            const res = await fetch(`/api/sessions/${sessionId}/add-student-makeup`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ student_id: parseInt(studentId), credit_id: parseInt(creditId) })
+            });
+
+            const result = await res.json();
+            modal.remove();
+
+            if (res.ok) {
+              alert('✅ ' + result.message);
+              // Refresh relevant data
+              loadUpcomingClasses();
+              loadStudents();
+              loadGroups();
+            } else {
+              alert('❌ Failed: ' + result.error);
+            }
+          } catch (err) {
+            modal.remove();
+            alert('❌ Error: ' + err.message);
+          }
+        });
+
+      } catch (err) {
+        alert('❌ Error loading student data: ' + err.message);
       }
     }
 

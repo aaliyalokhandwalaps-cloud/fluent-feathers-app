@@ -10577,6 +10577,96 @@ app.put('/api/makeup-credits/:creditId/schedule', async (req, res) => {
   }
 });
 
+// Admin: Add student to a specific group session using makeup credit
+app.post('/api/sessions/:sessionId/add-student-makeup', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { sessionId } = req.params;
+    const { student_id, credit_id } = req.body;
+
+    if (!student_id || !credit_id) {
+      return res.status(400).json({ error: 'student_id and credit_id are required' });
+    }
+
+    await client.query('BEGIN');
+
+    // Verify session exists and is a group session
+    const session = await client.query(`
+      SELECT s.*, g.group_name
+      FROM sessions s
+      LEFT JOIN groups g ON s.group_id = g.id
+      WHERE s.id = $1
+    `, [sessionId]);
+
+    if (session.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    const sess = session.rows[0];
+    if (!sess.group_id) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'This endpoint only works for group sessions' });
+    }
+
+    // Verify student belongs to this group
+    const student = await client.query('SELECT * FROM students WHERE id = $1 AND group_id = $2', [student_id, sess.group_id]);
+    if (student.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Student not found in this group' });
+    }
+
+    // Check if student is already in this session
+    const existingAttendance = await client.query(
+      'SELECT id FROM session_attendance WHERE session_id = $1 AND student_id = $2',
+      [sessionId, student_id]
+    );
+
+    if (existingAttendance.rows.length > 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Student is already enrolled in this session' });
+    }
+
+    // Verify makeup credit exists and is available
+    const credit = await client.query('SELECT * FROM makeup_classes WHERE id = $1 AND status = $2 AND student_id = $3', [credit_id, 'Available', student_id]);
+    if (credit.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Makeup credit not found, already used, or belongs to different student' });
+    }
+
+    // Add student to session attendance
+    await client.query(
+      'INSERT INTO session_attendance (session_id, student_id, attendance) VALUES ($1, $2, $3)',
+      [sessionId, student_id, 'Pending']
+    );
+
+    // Mark makeup credit as used
+    await client.query(
+      `UPDATE makeup_classes SET status = 'Scheduled', used_date = CURRENT_DATE, scheduled_session_id = $1 WHERE id = $2`,
+      [sessionId, credit_id]
+    );
+
+    // Increment remaining_sessions since this is a makeup session
+    await client.query('UPDATE students SET remaining_sessions = remaining_sessions + 1 WHERE id = $1', [student_id]);
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: `Added ${student.rows[0].name} to the ${sess.group_name || 'group'} session using makeup credit`,
+      session_id: sessionId,
+      student_name: student.rows[0].name
+    });
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error adding student to session with makeup:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
 app.post('/api/parent/check-email', async (req, res) => {
   try {
     const parentEmail = (req.body.email || '').toString().trim();
