@@ -7860,6 +7860,13 @@ app.post('/api/groups/:groupId/convert-private-sessions', async (req, res) => {
           ON CONFLICT (session_id, student_id) DO NOTHING
         `, [first.id, dup.student_id, dup.attendance || 'Pending']);
 
+// In convert-private-sessions, before each dup session delete:
+await client.query(`
+  UPDATE makeup_classes
+  SET scheduled_session_id = $1
+  WHERE scheduled_session_id = $2
+`, [first.id, dup.id]);
+
         // Delete the duplicate session
         await client.query('DELETE FROM sessions WHERE id = $1', [dup.id]);
       }
@@ -14580,6 +14587,13 @@ app.post('/api/groups/:groupId/merge-matching-sessions', async (req, res) => {
           ON CONFLICT (session_id, student_id)
           DO UPDATE SET attendance = EXCLUDED.attendance
         `, [groupSession.id, row.student_id]);
+
+// ✅ FIX: Reassign makeup credits pointing to the old session → new group session
+await client.query(`
+  UPDATE makeup_classes
+  SET scheduled_session_id = $1
+  WHERE scheduled_session_id = $2
+`, [groupSession.id, row.session_id]);
 
         await client.query('DELETE FROM sessions WHERE id = $1', [row.session_id]);
         affectedStudents.add(String(row.student_id));
