@@ -8302,6 +8302,29 @@ app.delete('/api/sessions/:sessionId', async (req, res) => {
     }
     const session = sessionRes.rows[0];
 
+    // If this session was created from a makeup credit, restore the credit before deleting the session
+    const makeupCountRes = await client.query(
+      'SELECT COUNT(*) as count FROM makeup_classes WHERE scheduled_session_id = $1',
+      [req.params.sessionId]
+    );
+    const makeupCount = parseInt(makeupCountRes.rows[0]?.count || '0', 10);
+
+    if (makeupCount > 0) {
+      await client.query(`
+        UPDATE makeup_classes
+        SET status = 'Available', scheduled_session_id = NULL, scheduled_date = NULL, scheduled_time = NULL, used_date = NULL
+        WHERE scheduled_session_id = $1
+      `, [req.params.sessionId]);
+
+      if (session.student_id) {
+        await client.query(`
+          UPDATE students
+          SET remaining_sessions = GREATEST(remaining_sessions - $1, 0)
+          WHERE id = $2
+        `, [makeupCount, session.student_id]);
+      }
+    }
+
     // Also delete related session_materials
     await client.query('DELETE FROM session_materials WHERE session_id = $1', [req.params.sessionId]);
     await client.query('DELETE FROM sessions WHERE id = $1', [req.params.sessionId]);
