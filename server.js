@@ -9111,6 +9111,36 @@ app.post('/api/sessions/:sessionId/save-link', async (req, res) => {
   }
 });
 
+// Notify parents when teacher joins a class
+app.post('/api/sessions/:sessionId/teacher-joined', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    if (!sessionId) return res.status(400).json({ error: 'sessionId required' });
+
+    const result = await notifyParentsTeacherJoinedSession(sessionId);
+    
+    if (!result.success) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Could not notify parents', 
+        reason: result.reason,
+        details: result.alreadySent ? 'Notification already sent for this session' : undefined
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Teacher joined notification sent to ${result.sentCount} parent(s)`,
+      recipients: result.recipients,
+      sentCount: result.sentCount,
+      alreadySent: result.alreadySent
+    });
+  } catch (err) {
+    console.error('Teacher joined notify error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/sessions/:sessionId/grade/:studentId', async (req, res) => {
   const client = await pool.connect();
   try {
