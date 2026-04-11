@@ -10650,9 +10650,12 @@ app.post('/api/sessions/:sessionId/add-student-makeup', async (req, res) => {
 
     // Check if student has a private session at the same time (to allow adding to group without consuming credit)
     const privateSession = await client.query(`
-      SELECT s.id FROM sessions s
-      JOIN session_attendance sa ON s.id = sa.session_id
-      WHERE sa.student_id = $1 AND s.session_type = 'Private' AND s.session_date = $2 AND s.session_time = $3
+      SELECT id FROM sessions
+      WHERE student_id = $1
+        AND session_type = 'Private'
+        AND session_date = $2
+        AND session_time = $3
+        AND status NOT IN ('Cancelled', 'Cancelled by Parent')
     `, [student_id, sess.session_date, sess.session_time]);
 
     const hasPrivate = privateSession.rows.length > 0;
