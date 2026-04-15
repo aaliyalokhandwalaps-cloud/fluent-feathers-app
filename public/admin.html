@@ -5014,15 +5014,17 @@ if (dueEl) {
       const uniqueParents = new Map();
       (allStudents || []).forEach(student => {
         const emailKey = String(student.parent_email || '').trim().toLowerCase();
-        if (!emailKey) return;
-        const existing = uniqueParents.get(emailKey) || {
+        const contactKey = String(student.primary_contact || '').trim().toLowerCase();
+        const nameKey = String(student.parent_name || '').trim().toLowerCase();
+        const parentKey = emailKey || contactKey || nameKey || `student-${student.id}`;
+        const existing = uniqueParents.get(parentKey) || {
           enabled: false,
           parent_name: student.parent_name || '',
           student_names: []
         };
         existing.enabled = existing.enabled || !!student.parent_push_enabled;
         if (student.name) existing.student_names.push(student.name);
-        uniqueParents.set(emailKey, existing);
+        uniqueParents.set(parentKey, existing);
       });
 
       const total = uniqueParents.size;
@@ -8039,28 +8041,39 @@ async function saveEditedPayment() {
       }
     }
 
-    function uploadMaterial(id, type) {
+    async function uploadMaterial(id, type) {
       const inp = document.getElementById(type==='ppt'?'pptFile':type==='recording'?'recFile':'hwFile');
-      if(inp.files[0]) {
-        const fd=new FormData();
-        fd.append('file', inp.files[0]);
-        fd.append('materialType', type);
-        fetch(`/api/sessions/${id}/upload`, {method:'POST', body:fd})
-          .then(r => r.json().then(data => ({ok: r.ok, data})))
-          .then(({ok, data}) => {
-            if (ok) {
-              alert('✅ ' + (data.message || 'Material uploaded successfully!'));
-              inp.value = '';
-              loadSessionMaterials(id);
-              // Refresh the modal to show updated view links
-              openSessionModal(id, window.currentRescheduleSession?.session_type || 'Private');
-            } else {
-              alert('❌ Upload failed: ' + (data.error || 'Unknown error'));
-            }
-          })
-          .catch(err => alert('❌ Upload failed: ' + err.message));
-      } else {
+      if (!inp.files[0]) {
         alert('Please select a file first');
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append('file', inp.files[0]);
+      fd.append('materialType', type);
+      fd.append('uploadType', type === 'homework' ? 'homework' : 'materials');
+
+      try {
+        const response = await fetch(`/api/sessions/${id}/upload`, {
+          method: 'POST',
+          body: fd
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+        const payload = contentType.includes('application/json')
+          ? await response.json()
+          : { error: await response.text() };
+
+        if (!response.ok) {
+          throw new Error(payload.error || `Upload failed with status ${response.status}`);
+        }
+
+        alert('✅ ' + (payload.message || 'Material uploaded successfully!'));
+        inp.value = '';
+        loadSessionMaterials(id);
+        openSessionModal(id, window.currentRescheduleSession?.session_type || 'Private');
+      } catch (err) {
+        alert('❌ Upload failed: ' + err.message);
       }
     }
 

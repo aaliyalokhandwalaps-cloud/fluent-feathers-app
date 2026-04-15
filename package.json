@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/package.json",
   "name": "fluent-feathers-lms",
   "version": "2.0.0",
   "description": "Complete Learning Management System",

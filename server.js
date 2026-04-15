@@ -3005,7 +3005,7 @@ async function sendPushToParentByEmail(parentEmail, title, body, data = {}) {
   let tokens;
   try {
     const r = await pool.query(
-      `SELECT fcm_token FROM parent_fcm_tokens WHERE LOWER(parent_email) = $1`,
+      `SELECT fcm_token FROM parent_fcm_tokens WHERE LOWER(TRIM(parent_email)) = $1`,
       [norm]
     );
     tokens = [...new Set(r.rows.map((x) => x.fcm_token).filter(Boolean))];
@@ -3197,8 +3197,8 @@ async function notifyParentsTeacherJoinedSession(sessionId) {
   let recipientRows = [];
   if (session.group_id) {
     const recipients = await pool.query(`
-      SELECT DISTINCT ON (LOWER(st.parent_email))
-             st.parent_email, st.parent_name, st.name AS student_name
+      SELECT DISTINCT ON (LOWER(TRIM(st.parent_email)))
+             TRIM(st.parent_email) AS parent_email, st.parent_name, st.name AS student_name
       FROM session_attendance sa
       JOIN students st ON sa.student_id = st.id
       WHERE sa.session_id = $1
@@ -3206,19 +3206,25 @@ async function notifyParentsTeacherJoinedSession(sessionId) {
         AND st.parent_email IS NOT NULL
         AND TRIM(st.parent_email) <> ''
         AND COALESCE(sa.attendance, 'Pending') NOT IN ('Cancelled', 'Cancelled by Parent', 'Excused', 'Unexcused', 'Absent')
-      ORDER BY LOWER(st.parent_email), st.id
+      ORDER BY LOWER(TRIM(st.parent_email)), st.id
     `, [sid]);
     recipientRows = recipients.rows;
   } else if (session.student_id) {
     const recipients = await pool.query(`
-      SELECT st.parent_email, st.parent_name, st.name AS student_name
+      SELECT DISTINCT ON (LOWER(TRIM(st.parent_email)))
+             TRIM(st.parent_email) AS parent_email, st.parent_name, st.name AS student_name
       FROM students st
-      WHERE st.id = $1
+      LEFT JOIN session_attendance sa
+        ON sa.student_id = st.id
+       AND sa.session_id = $2
+      WHERE (st.id = $1 OR sa.session_id IS NOT NULL)
         AND st.is_active = true
         AND st.parent_email IS NOT NULL
         AND TRIM(st.parent_email) <> ''
-      LIMIT 1
-    `, [session.student_id]);
+      ORDER BY LOWER(TRIM(st.parent_email)),
+               CASE WHEN st.id = $1 THEN 0 ELSE 1 END,
+               st.id
+    `, [session.student_id, sid]);
     recipientRows = recipients.rows;
   }
 
@@ -3264,6 +3270,47 @@ async function notifyParentsTeacherJoinedSession(sessionId) {
   );
 
   return { success: true, alreadySent: false, recipients: recipientRows.length, sentCount };
+}
+
+async function notifyAdminsOfChallengeSubmission(challengeId, studentId, fileName = null) {
+  try {
+    const metaResult = await pool.query(`
+      SELECT wc.title AS challenge_title,
+             s.name AS student_name,
+             s.parent_name,
+             s.parent_email
+      FROM weekly_challenges wc
+      JOIN students s ON s.id = $2
+      WHERE wc.id = $1
+      LIMIT 1
+    `, [challengeId, studentId]);
+
+    const meta = metaResult.rows[0];
+    if (!meta) return false;
+
+    const title = 'Challenge Submitted';
+    const bodyParts = [
+      `${meta.student_name || 'A student'} submitted "${meta.challenge_title || 'a challenge'}"`,
+      fileName ? `File: ${fileName}` : '',
+      meta.parent_name ? `Parent: ${meta.parent_name}` : ''
+    ].filter(Boolean);
+
+    const appUrl = (process.env.APP_URL || 'https://fluent-feathers-academy-lms.onrender.com').replace(/\/$/, '');
+    return await sendAdminPushNotification(title, bodyParts.join(' | '), {
+      type: 'challenge_submitted',
+      challengeId: String(challengeId),
+      studentId: String(studentId),
+      studentName: String(meta.student_name || ''),
+      challengeTitle: String(meta.challenge_title || ''),
+      parentEmail: String(meta.parent_email || ''),
+      fileName: String(fileName || ''),
+      url: `${appUrl}/admin.html`,
+      notificationTag: `challenge-submitted-${challengeId}-${studentId}-${Date.now()}`
+    });
+  } catch (err) {
+    console.warn('Challenge submitted admin push failed:', err.message);
+    return false;
+  }
 }
 
 async function sendPushToAdmins(title, body, data = {}) {
@@ -6973,7 +7020,19 @@ app.get('/api/students', async (req, res) => {
         GREATEST(COALESCE(s.missed_sessions, 0), COALESCE((SELECT COUNT(*) FROM sessions WHERE student_id = s.id AND status IN ('Missed', 'Excused', 'Unexcused')), 0)) as missed_sessions,
         (SELECT MAX(created_at) FROM monthly_assessments WHERE student_id = s.id AND assessment_type = 'monthly') as last_assessment_date,
         (SELECT COUNT(*) FROM monthly_assessments WHERE student_id = s.id AND assessment_type = 'monthly') as total_assessments,
-        CASE WHEN EXISTS (SELECT 1 FROM parent_fcm_tokens WHERE parent_email = s.parent_email) THEN true ELSE false END as parent_push_enabled
+        CASE
+          WHEN EXISTS (
+            SELECT 1
+            FROM parent_fcm_tokens pft
+            WHERE LOWER(TRIM(pft.parent_email)) = LOWER(TRIM(COALESCE(s.parent_email, '')))
+          ) THEN true
+          ELSE false
+        END as parent_push_enabled,
+        (
+          SELECT COUNT(DISTINCT pft.fcm_token)::int
+          FROM parent_fcm_tokens pft
+          WHERE LOWER(TRIM(pft.parent_email)) = LOWER(TRIM(COALESCE(s.parent_email, '')))
+        ) as parent_push_device_count
       FROM students s
       LEFT JOIN makeup_classes m ON s.id = m.student_id AND m.status = 'Available'
       WHERE s.is_active = true
@@ -9062,7 +9121,7 @@ app.post('/api/sessions/:sessionId/upload', handleUpload('file'), async (req, re
     let filePath;
     if (useCloudinary) {
       // Cloudinary - check multiple possible fields for the URL
-      filePath = req.file.path || req.file.secure_url || req.file.url;}
+      filePath = req.file.path || req.file.secure_url || req.file.url;
       console.log('📁 Cloudinary upload:', { path: req.file.path, secure_url: req.file.secure_url, url: req.file.url, filename: req.file.filename });
       if (!filePath) {
         throw new Error('Cloudinary did not return a file URL. Check your Cloudinary credentials.');
@@ -13725,6 +13784,7 @@ app.post('/api/challenges/:challengeId/student/:studentId/submit', handleUpload(
       );
     }
 
+    await notifyAdminsOfChallengeSubmission(challengeId, studentId, fileName);
     res.json({ success: true, message: 'Challenge submitted for review!' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -13751,6 +13811,7 @@ app.put('/api/challenges/:challengeId/student/:studentId/submit', async (req, re
       );
     }
 
+    await notifyAdminsOfChallengeSubmission(challengeId, studentId);
     res.json({ success: true, message: 'Challenge submitted for review!' });
   } catch (err) {
     res.status(500).json({ error: err.message });
