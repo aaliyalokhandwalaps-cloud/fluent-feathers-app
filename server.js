@@ -9062,7 +9062,7 @@ app.post('/api/sessions/:sessionId/upload', handleUpload('file'), async (req, re
     let filePath;
     if (useCloudinary) {
       // Cloudinary - check multiple possible fields for the URL
-      filePath = req.file.path || req.file.secure_url || req.file.url;
+      filePath = req.file.path || req.file.secure_url || req.file.url;}
       console.log('📁 Cloudinary upload:', { path: req.file.path, secure_url: req.file.secure_url, url: req.file.url, filename: req.file.filename });
       if (!filePath) {
         throw new Error('Cloudinary did not return a file URL. Check your Cloudinary credentials.');
