@@ -412,11 +412,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Extended timeout for upload endpoints (10 minutes for file uploads)
+// Extended timeout for upload endpoints (2 minutes for file uploads)
 app.use((req, res, next) => {
   if (req.path.includes('/upload') || req.path.includes('/annotate')) {
-    req.setTimeout(10 * 60 * 1000);
-    res.setTimeout(10 * 60 * 1000);
+    req.setTimeout(2 * 60 * 1000);
+    res.setTimeout(2 * 60 * 1000);
   }
   next();
 });
@@ -1137,9 +1137,9 @@ const upload = multer({
 // Wrapper to handle multer upload errors properly
 const handleUpload = (fieldName) => {
   return (req, res, next) => {
-    // Set extended timeout for upload processing
-    req.setTimeout(10 * 60 * 1000);
-    res.setTimeout(10 * 60 * 1000);
+    // Set reasonable timeout for upload processing (2 minutes max)
+    req.setTimeout(2 * 60 * 1000);
+    res.setTimeout(2 * 60 * 1000);
 
     upload.single(fieldName)(req, res, (err) => {
       if (err) {
@@ -2099,6 +2099,44 @@ async function runMigrations() {
       console.error('❌ Error creating session_materials table:', err.message);
     }
 
+    try {
+      await client.query(`ALTER TABLE materials ADD COLUMN IF NOT EXISTS submission_comment TEXT`);
+      await client.query(`ALTER TABLE materials ADD COLUMN IF NOT EXISTS submission_link TEXT`);
+      await client.query(`ALTER TABLE materials ADD COLUMN IF NOT EXISTS comment_only_submission BOOLEAN`);
+      await client.query(`ALTER TABLE materials ADD COLUMN IF NOT EXISTS homework_points_approved BOOLEAN`);
+      await client.query(`ALTER TABLE materials ALTER COLUMN file_name DROP NOT NULL`);
+      await client.query(`ALTER TABLE materials ALTER COLUMN file_path DROP NOT NULL`);
+      await client.query(`
+        UPDATE materials
+        SET comment_only_submission = CASE
+          WHEN file_type = 'Homework'
+            AND uploaded_by IN ('Parent', 'Admin')
+            AND (file_name IS NULL OR TRIM(file_name) = '')
+            AND (file_path IS NULL OR TRIM(file_path) = '')
+            AND (
+              (submission_comment IS NOT NULL AND TRIM(submission_comment) <> '')
+              OR (submission_link IS NOT NULL AND TRIM(submission_link) <> '')
+            )
+          THEN true
+          ELSE false
+        END
+        WHERE comment_only_submission IS NULL
+      `);
+      await client.query(`
+        UPDATE materials
+        SET homework_points_approved = CASE
+          WHEN COALESCE(comment_only_submission, false) = true THEN false
+          ELSE true
+        END
+        WHERE homework_points_approved IS NULL
+      `);
+      await client.query(`ALTER TABLE materials ALTER COLUMN comment_only_submission SET DEFAULT false`);
+      await client.query(`ALTER TABLE materials ALTER COLUMN homework_points_approved SET DEFAULT true`);
+      console.log('âœ… Materials table updated for comment/link homework submissions');
+    } catch (err) {
+      console.error('âŒ Error updating materials for comment/link submissions:', err.message);
+    }
+
     // Migration 13: Add columns to makeup_classes for tracking scheduled makeup sessions
     try {
       await client.query(`ALTER TABLE makeup_classes ADD COLUMN IF NOT EXISTS scheduled_session_id INTEGER REFERENCES sessions(id)`);
@@ -2600,7 +2638,137 @@ async function runMigrations() {
       console.log('Migration 45 note:', err.message);
     }
 
-    // Migration 46: Harden RLS policies across all public tables
+    // Migration 46: Daily Quiz System
+    try {
+      // Quiz Questions Bank
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS quiz_questions (
+          id SERIAL PRIMARY KEY,
+          level VARCHAR(20) NOT NULL CHECK (level IN ('beginner', 'intermediate', 'advanced')),
+          category VARCHAR(30) NOT NULL CHECK (category IN ('grammar', 'vocabulary', 'listening', 'reading', 'pronunciation', 'phonics')),
+          question_text TEXT NOT NULL,
+          options JSONB NOT NULL,
+          correct_answer INTEGER NOT NULL CHECK (correct_answer >= 0 AND correct_answer <= 3),
+          explanation TEXT,
+          audio_url TEXT, -- For listening/pronunciation questions
+          image_url TEXT, -- For visual questions
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          is_active BOOLEAN DEFAULT true
+        )
+      `);
+
+      // Daily Quiz Sessions
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS daily_quizzes (
+          id SERIAL PRIMARY KEY,
+          quiz_date DATE NOT NULL UNIQUE,
+          beginner_questions JSONB NOT NULL,
+          intermediate_questions JSONB NOT NULL,
+          advanced_questions JSONB NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      // Student Quiz Attempts
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS quiz_attempts (
+          id SERIAL PRIMARY KEY,
+          student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
+          quiz_date DATE NOT NULL,
+          level VARCHAR(20) NOT NULL CHECK (level IN ('beginner', 'intermediate', 'advanced')),
+          answers JSONB NOT NULL,
+          score INTEGER NOT NULL CHECK (score >= 0 AND score <= 10),
+          points_awarded INTEGER NOT NULL DEFAULT 0,
+          completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          time_taken_seconds INTEGER,
+          UNIQUE(student_id, quiz_date)
+        )
+      `);
+
+      // Create indexes for performance
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_quiz_questions_level_category ON quiz_questions(level, category)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_quiz_questions_active ON quiz_questions(is_active)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_daily_quizzes_date ON daily_quizzes(quiz_date)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_quiz_attempts_student_date ON quiz_attempts(student_id, quiz_date)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_quiz_attempts_date ON quiz_attempts(quiz_date)`);
+
+      console.log('✅ Migration 46: Created daily quiz system tables');
+    } catch (err) {
+      console.log('Migration 46 note:', err.message);
+    }
+
+    // Migration 47: Add sample quiz questions
+    try {
+      const sampleQuestions = [
+        // Beginner Grammar
+        ['beginner', 'grammar', 'She ___ to school every day.', '["walk", "walks", "walking", "walked"]', 1, 'Present simple tense for habits'],
+        ['beginner', 'grammar', 'I ___ a student.', '["am", "is", "are", "be"]', 0, 'First person singular present tense'],
+        ['beginner', 'grammar', 'They ___ playing in the park.', '["is", "am", "are", "be"]', 2, 'Present continuous for current actions'],
+
+        // Beginner Vocabulary
+        ['beginner', 'vocabulary', 'What is the color of the sky on a clear day?', '["Red", "Blue", "Green", "Yellow"]', 1, 'The sky appears blue due to light scattering'],
+        ['beginner', 'vocabulary', 'A large body of water surrounded by land is called a:', '["River", "Lake", "Ocean", "Mountain"]', 1, 'Lake is inland water body'],
+        ['beginner', 'vocabulary', 'What do you call a baby dog?', '["Kitten", "Puppy", "Calf", "Foal"]', 1, 'Puppy is a young dog'],
+
+        // Beginner Phonics
+        ['beginner', 'phonics', 'Which word starts with /b/ sound?', '["cat", "ball", "dog", "fish"]', 1, 'Ball begins with the /b/ sound'],
+        ['beginner', 'phonics', 'Which word starts with /m/ sound?', '["sun", "moon", "tree", "bird"]', 1, 'Moon begins with the /m/ sound'],
+        ['beginner', 'phonics', 'Which word starts with /s/ sound?', '["pen", "sun", "moon", "tree"]', 1, 'Sun begins with the /s/ sound'],
+
+        // Intermediate Grammar
+        ['intermediate', 'grammar', 'If I ___ rich, I would travel the world.', '["am", "was", "were", "be"]', 2, 'Second conditional for hypothetical situations'],
+        ['intermediate', 'grammar', 'She has been ___ English for 5 years.', '["study", "studying", "studies", "studied"]', 1, 'Present perfect continuous tense'],
+        ['intermediate', 'grammar', 'By the time we arrive, the movie ___ .', '["will start", "will have started", "starts", "started"]', 1, 'Future perfect tense'],
+
+        // Intermediate Vocabulary
+        ['intermediate', 'vocabulary', 'What does "ubiquitous" mean?', '["Rare", "Everywhere", "Expensive", "Small"]', 1, 'Ubiquitous means present everywhere'],
+        ['intermediate', 'vocabulary', 'A person who studies rocks is called a:', '["Geologist", "Biologist", "Chemist", "Physicist"]', 0, 'Geologist studies rocks and earth materials'],
+        ['intermediate', 'vocabulary', 'What is the opposite of "generous"?', '["Kind", "Stingy", "Friendly", "Honest"]', 1, 'Stingy means not generous'],
+
+        // Intermediate Reading
+        ['intermediate', 'reading', 'What type of word is "quickly"?', '["Noun", "Verb", "Adjective", "Adverb"]', 3, 'Quickly describes how an action is done'],
+        ['intermediate', 'reading', 'In the sentence "The cat sat on the mat", "mat" is a:', '["Subject", "Verb", "Object", "Preposition"]', 2, 'Mat is the object of the preposition "on"'],
+
+        // Advanced Grammar
+        ['advanced', 'grammar', 'Had I known about the party, I ___ .', '["would come", "would have come", "came", "come"]', 1, 'Third conditional for past hypothetical'],
+        ['advanced', 'grammar', 'The book ___ by the time I finish reading it.', '["will be read", "will have been read", "is read", "was read"]', 1, 'Future perfect passive'],
+        ['advanced', 'grammar', 'She insisted that the work ___ immediately.', '["be done", "is done", "was done", "done"]', 0, 'Subjunctive mood after insist'],
+
+        // Advanced Vocabulary
+        ['advanced', 'vocabulary', 'What does "ephemeral" mean?', '["Eternal", "Short-lived", "Bright", "Heavy"]', 1, 'Ephemeral means lasting for a very short time'],
+        ['advanced', 'vocabulary', 'A "plethora" means:', '["Shortage", "Abundance", "Quality", "Speed"]', 1, 'Plethora means a large amount'],
+        ['advanced', 'vocabulary', 'What is a "quintessential" example?', '["Perfect", "Typical", "Strange", "Modern"]', 0, 'Quintessential means perfect example of a type'],
+
+        // Advanced Reading
+        ['advanced', 'reading', 'What figure of speech is "time flies"?', '["Metaphor", "Simile", "Personification", "Hyperbole"]', 0, 'Time flies is a metaphor'],
+        ['advanced', 'reading', 'In poetry, "iambic pentameter" refers to:', '["Rhyme scheme", "Meter", "Stanza length", "Poem type"]', 1, 'Iambic pentameter is a metrical pattern'],
+
+        // Pronunciation
+        ['beginner', 'pronunciation', 'How do you pronounce "th" in "think"?', '["Like t", "Like z", "Like s", "Like f"]', 0, 'Voiceless "th" sound'],
+        ['intermediate', 'pronunciation', 'Which word has the same vowel sound as "boat"?', '["Cat", "Cow", "Car", "Cut"]', 1, 'Cow has the /ou/ diphthong'],
+        ['advanced', 'pronunciation', 'How is "colonel" typically pronounced?', '["KER-nel", "kol-o-NEL", "KUH-nel", "kol-NEL"]', 1, 'Colonel is pronounced kol-o-NEL'],
+
+        // Listening (text-based for now)
+        ['beginner', 'listening', 'If someone says "I\'m famished", they mean:', '["Tired", "Hungry", "Cold", "Happy"]', 1, 'Famished means very hungry'],
+        ['intermediate', 'listening', 'What does "break a leg" mean?', '["Good luck", "Be careful", "Hurry up", "Stop talking"]', 0, '"Break a leg" means good luck'],
+        ['advanced', 'listening', 'What does "barking up the wrong tree" mean?', '["Wrong direction", "Wrong person", "Wrong time", "Wrong place"]', 1, 'Means pursuing the wrong person or course']
+      ];
+
+      for (const [level, category, question, options, correct_answer, explanation] of sampleQuestions) {
+        await client.query(`
+          INSERT INTO quiz_questions (level, category, question_text, options, correct_answer, explanation)
+          VALUES ($1, $2, $3, $4, $5, $6)
+          ON CONFLICT DO NOTHING
+        `, [level, category, question, options, correct_answer, explanation]);
+      }
+
+      console.log('✅ Migration 47: Added sample quiz questions');
+    } catch (err) {
+      console.log('Migration 47 note:', err.message);
+    }
+
+    // Migration 48: Harden RLS policies across all public tables
     try {
       const { rows: publicTables } = await client.query(`
         SELECT tablename
@@ -6363,6 +6531,71 @@ cron.schedule('30 * * * *', async () => {
 
 console.log('✅ Demo lead follow-up system initialized - checking every hour');
 
+// ==================== DAILY QUIZ SYSTEM ====================
+
+// Generate daily quiz at midnight
+cron.schedule('0 0 * * *', async () => {
+  try {
+    console.log('🎯 Generating daily quiz...');
+    await generateDailyQuiz();
+    console.log('✅ Daily quiz generated successfully');
+  } catch (err) {
+    console.error('❌ Error generating daily quiz:', err);
+  }
+});
+
+// Function to generate daily quiz
+async function generateDailyQuiz() {
+  const today = new Date().toISOString().split('T')[0];
+
+  // Check if quiz already exists for today
+  const existing = await pool.query('SELECT id FROM daily_quizzes WHERE quiz_date = $1', [today]);
+  if (existing.rows.length > 0) {
+    console.log('Daily quiz already exists for today');
+    return;
+  }
+
+  // Generate questions for each level
+  const levels = ['beginner', 'intermediate', 'advanced'];
+  const quizData = { quiz_date: today };
+
+  for (const level of levels) {
+    // Get 10 random questions for this level (2 from each category)
+    const categories = ['grammar', 'vocabulary', 'listening', 'reading', 'pronunciation', 'phonics'];
+    const questions = [];
+
+    for (const category of categories) {
+      // Get 2 questions per category (12 total, we'll take first 10)
+      const categoryQuestions = await pool.query(
+        'SELECT * FROM quiz_questions WHERE level = $1 AND category = $2 AND is_active = true ORDER BY RANDOM() LIMIT 2',
+        [level, category]
+      );
+      questions.push(...categoryQuestions.rows);
+    }
+
+    // Take first 10 questions
+    quizData[`${level}_questions`] = questions.slice(0, 10).map(q => ({
+      id: q.id,
+      question_text: q.question_text,
+      options: q.options,
+      category: q.category,
+      audio_url: q.audio_url,
+      image_url: q.image_url
+    }));
+  }
+
+  // Save to database
+  await pool.query(`
+    INSERT INTO daily_quizzes (quiz_date, beginner_questions, intermediate_questions, advanced_questions)
+    VALUES ($1, $2, $3, $4)
+  `, [
+    today,
+    JSON.stringify(quizData.beginner_questions),
+    JSON.stringify(quizData.intermediate_questions),
+    JSON.stringify(quizData.advanced_questions)
+  ]);
+}
+
 // ==================== API ROUTES ====================
 
 // Currency conversion rates to INR (approximate)
@@ -7466,13 +7699,7 @@ app.post('/api/groups/:groupId/add-to-sessions', async (req, res) => {
         [regularCount, student_id]
       );
     }
-    // Increment remaining for makeup sessions so they show in the count
-    if (makeupNum > 0) {
-      await client.query(
-        'UPDATE students SET remaining_sessions = remaining_sessions + $1 WHERE id = $2',
-        [makeupNum, student_id]
-      );
-    }
+    // Note: Makeup sessions don't affect remaining_sessions - they're bonus sessions
 
     await client.query('COMMIT');
 
@@ -8205,6 +8432,9 @@ app.get('/api/sessions/:studentId', async (req, res) => {
             SELECT json_agg(
               json_build_object(
                 'file_path', file_path,
+                'file_name', file_name,
+                'submission_comment', submission_comment,
+                'submission_link', submission_link,
                 'feedback_grade', feedback_grade,
                 'feedback_comments', feedback_comments,
                 'corrected_file_path', corrected_file_path,
@@ -8254,6 +8484,9 @@ app.get('/api/sessions/:studentId', async (req, res) => {
               SELECT json_agg(
                 json_build_object(
                   'file_path', file_path,
+                  'file_name', file_name,
+                  'submission_comment', submission_comment,
+                  'submission_link', submission_link,
                   'feedback_grade', feedback_grade,
                   'feedback_comments', feedback_comments,
                   'corrected_file_path', corrected_file_path,
@@ -8777,11 +9010,17 @@ app.post('/api/sessions/:sessionId/attendance', async (req, res) => {
       const alreadyCounted = prevStatus === 'Completed' || prevStatus === 'Excused' || prevStatus === 'Missed';
 
       if (attendance === 'Present') {
+        // Check if this is a makeup session
+        const sessionInfo = await pool.query('SELECT notes FROM sessions WHERE id = $1', [sessionId]);
+        const isMakeupSession = sessionInfo.rows[0]?.notes === 'Makeup Class';
+
         if (!alreadyCounted) {
-          await pool.query('UPDATE students SET completed_sessions = completed_sessions + 1, remaining_sessions = GREATEST(remaining_sessions - 1, 0), renewal_reminder_sent = false WHERE id = $1', [studentId]);
+          await pool.query('UPDATE students SET completed_sessions = completed_sessions + 1, renewal_reminder_sent = false WHERE id = $1', [studentId]);
+          // Makeup sessions don't affect remaining_sessions
         } else if (prevStatus !== 'Completed') {
-          // Was Excused/Missed before, now Present - add to completed but don't re-decrement remaining
+          // Was Excused/Missed before, now Present - add to completed
           await pool.query('UPDATE students SET completed_sessions = completed_sessions + 1 WHERE id = $1', [studentId]);
+          // Makeup sessions don't affect remaining_sessions
         }
 
         // Award attendance badges
@@ -8913,6 +9152,10 @@ app.post('/api/sessions/:sessionId/group-attendance', async (req, res) => {
 
     await client.query('BEGIN');
 
+    // Check if this is a makeup session
+    const sessionInfo = await client.query('SELECT notes FROM sessions WHERE id = $1', [sessionId]);
+    const isMakeupSession = sessionInfo.rows[0]?.notes === 'Makeup Class';
+
     for (const record of attendanceData) {
       const prev = await client.query('SELECT attendance FROM session_attendance WHERE session_id = $1 AND student_id = $2', [sessionId, record.student_id]);
       const prevAttendance = prev.rows[0]?.attendance;
@@ -8933,12 +9176,8 @@ app.post('/api/sessions/:sessionId/group-attendance', async (req, res) => {
       if (record.attendance === 'Present') {
         // If changing TO Present from non-Present
         if (!wasPresent) {
-          await client.query(`UPDATE students SET completed_sessions = completed_sessions + 1 WHERE id = $1`, [record.student_id]);
-
-          // Only decrement remaining if coming from Pending (not already decremented)
-          if (wasPending) {
-            await client.query(`UPDATE students SET remaining_sessions = GREATEST(remaining_sessions - 1, 0), renewal_reminder_sent = false WHERE id = $1`, [record.student_id]);
-          }
+          await client.query(`UPDATE students SET completed_sessions = completed_sessions + 1, renewal_reminder_sent = false WHERE id = $1`, [record.student_id]);
+          // Makeup sessions don't affect remaining_sessions
 
           // Award badges for group class attendance
           const student = await client.query('SELECT completed_sessions FROM students WHERE id = $1', [record.student_id]);
@@ -9100,67 +9339,82 @@ app.post('/api/sessions/:sessionId/upload', handleUpload('file'), async (req, re
   if (!req.file) return res.status(400).json({ error: 'No file uploaded. If using Cloudinary, check credentials in Render environment variables.' });
   const col = { ppt:'ppt_file_path', recording:'recording_file_path', homework:'homework_file_path' }[req.body.materialType];
   if (!col) return res.status(400).json({ error: 'Invalid type' });
-  
-  let client;
-  const uploadTimeoutTimer = setTimeout(() => {
-    console.error('Upload DB operation timeout for session:', req.params.sessionId);
-    if (client) try { client.release(); } catch(e) {}
-    if (!res.headersSent) {
-      res.status(408).json({ error: 'Database operation timed out. File was uploaded but could not be saved to session. Please try again.' });
-    }
-  }, 25000); // 25 second timeout for DB operations
 
   try {
-    client = await Promise.race([
-      pool.connect(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('DB connection timeout')), 10000))
-    ]);
-
-    await client.query('BEGIN');
-    // Get file path - Cloudinary returns URL in path/secure_url, local storage uses filename
-    let filePath;
-    if (useCloudinary) {
+    // Get file path immediately - Cloudinary returns URL in path/secure_url, local storage uses filename
+    let filePath = null;
+    if (req.file && useCloudinary) {
       // Cloudinary - check multiple possible fields for the URL
       filePath = req.file.path || req.file.secure_url || req.file.url;
       console.log('📁 Cloudinary upload:', { path: req.file.path, secure_url: req.file.secure_url, url: req.file.url, filename: req.file.filename });
       if (!filePath) {
         throw new Error('Cloudinary did not return a file URL. Check your Cloudinary credentials.');
       }
-    } else {
+    } else if (req.file) {
       // Local storage - use relative path
       filePath = '/uploads/materials/' + req.file.filename;
     }
-    await client.query(`UPDATE sessions SET ${col} = $1 WHERE id = $2`, [filePath, req.params.sessionId]);
-    const session = (await client.query('SELECT * FROM sessions WHERE id = $1', [req.params.sessionId])).rows[0];
 
-    // Also add to session_materials table for multiple file support
+    // Respond immediately with success - file upload is complete
+    res.json({
+      message: 'Material uploaded successfully!',
+      filename: req.file.filename,
+      filePath: filePath
+    });
+
+    // Do database operations asynchronously after response
+    processUploadDatabaseOperations(req.params.sessionId, col, filePath, req.body.materialType, req.file);
+
+  } catch (err) {
+    console.error('Upload error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Asynchronous function to handle database operations after upload response
+async function processUploadDatabaseOperations(sessionId, col, filePath, materialType, fileInfo) {
+  let client;
+  try {
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    // Update session with file path
+    await client.query(`UPDATE sessions SET ${col} = $1 WHERE id = $2`, [filePath, sessionId]);
+    const session = (await client.query('SELECT * FROM sessions WHERE id = $1', [sessionId])).rows[0];
+
+    // Add to session_materials table for multiple file support
     await client.query(`
       INSERT INTO session_materials (session_id, material_type, file_name, file_path, file_size)
       VALUES ($1, $2, $3, $4, $5)
-    `, [req.params.sessionId, req.body.materialType.toUpperCase(), req.file.originalname, filePath, req.file.size || 0]);
+    `, [sessionId, materialType.toUpperCase(), fileInfo.originalname, filePath, fileInfo.size || 0]);
 
-    const studentsQuery = session.session_type === 'Group' ? `SELECT id FROM students WHERE group_id = $1 AND is_active = true` : `SELECT $1 as id`;
+    // Get students for this session
+    const studentsQuery = session.session_type === 'Group'
+      ? `SELECT id FROM students WHERE group_id = $1 AND is_active = true`
+      : `SELECT $1 as id`;
     const students = await client.query(studentsQuery, [session.group_id || session.student_id]);
-    for(const s of students.rows) {
-      await client.query(`
+
+    // Insert materials for all students (use individual inserts for safety)
+    const materialInserts = students.rows.map(s =>
+      client.query(`
         INSERT INTO materials (student_id, group_id, session_id, session_date, file_type, file_name, file_path, uploaded_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, 'Teacher')
-      `, [s.id, session.group_id, req.params.sessionId, session.session_date, req.body.materialType.toUpperCase(), req.file.originalname, filePath]);
-    }
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `, [s.id, session.group_id, sessionId, session.session_date, materialType.toUpperCase(), fileInfo.originalname, filePath, 'Teacher'])
+    );
+
+    await Promise.all(materialInserts);
+
     await client.query('COMMIT');
-    clearTimeout(uploadTimeoutTimer);
-    res.json({ message: 'Material uploaded successfully!', filename: req.file.filename });
+    console.log(`✅ Database operations completed for session ${sessionId} upload`);
   } catch (err) {
-    clearTimeout(uploadTimeoutTimer);
+    console.error('❌ Database operations failed for session upload:', err);
     if (client) {
       try { await client.query('ROLLBACK'); } catch(e) {}
     }
-    console.error('Upload error:', err.message);
-    res.status(500).json({ error: 'Upload failed: ' + err.message });
   } finally {
     if (client) client.release();
   }
-});
+}
 
 app.put('/api/sessions/:sessionId/notes', async (req, res) => {
   try {
@@ -9302,10 +9556,29 @@ app.get('/api/materials/:studentId', async (req, res) => {
 });
 
 app.post('/api/upload/homework/:studentId', handleUpload('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded. If using Cloudinary, check credentials in Render environment variables.' });
   try {
+    const submissionComment = String(req.body.comment || '').trim();
+    const submissionLinkRaw = String(req.body.link || '').trim();
+    const submissionLink = submissionLinkRaw
+      ? (/^https?:\/\//i.test(submissionLinkRaw) ? submissionLinkRaw : `https://${submissionLinkRaw}`)
+      : '';
+    const commentOnlySubmission = !req.file && (!!submissionComment || !!submissionLink);
+
+    if (!req.file && !submissionComment && !submissionLink) {
+      return res.status(400).json({ error: 'Please upload a file, write a comment, or add a link.' });
+    }
+
+    if (submissionLink) {
+      try {
+        const parsed = new URL(submissionLink);
+        if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('invalid_protocol');
+      } catch (e) {
+        return res.status(400).json({ error: 'Please enter a valid http(s) link.' });
+      }
+    }
+
     // Duplicate guard: block re-submission of the same filename for the same session
-    if (req.body.sessionId) {
+    if (req.body.sessionId && req.file) {
       const dup = await pool.query(
         `SELECT id FROM materials WHERE student_id = $1 AND session_id = $2 AND file_name = $3 AND uploaded_by = 'Parent'`,
         [req.params.studentId, req.body.sessionId, req.file.originalname]
@@ -9316,45 +9589,47 @@ app.post('/api/upload/homework/:studentId', handleUpload('file'), async (req, re
     }
 
     // Get file path - Cloudinary returns URL in req.file.path, local storage uses filename
-    let filePath;
-    if (useCloudinary) {
+    let filePath = null;
+    if (req.file && useCloudinary) {
       // Cloudinary: use secure_url if available, otherwise path
       filePath = req.file.secure_url || req.file.path || req.file.url;
       console.log('📁 Cloudinary homework upload:', { path: req.file.path, secure_url: req.file.secure_url, url: req.file.url });
       if (!filePath) {
         return res.status(500).json({ error: 'Cloudinary did not return file URL. Check your CLOUDINARY_URL or CLOUDINARY_API_KEY/SECRET/CLOUD_NAME in Render.' });
       }
-    } else {
+    } else if (req.file) {
       // Local storage - use relative path
       filePath = '/uploads/homework/' + req.file.filename;
     }
 
     await pool.query(`
-      INSERT INTO materials (student_id, session_id, session_date, file_type, file_name, file_path, uploaded_by)
-      VALUES ($1, $2, CURRENT_DATE, 'Homework', $3, $4, 'Parent')
-    `, [req.params.studentId, req.body.sessionId, req.file.originalname, filePath]);
+      INSERT INTO materials (student_id, session_id, session_date, file_type, file_name, file_path, uploaded_by, submission_comment, submission_link, comment_only_submission, homework_points_approved)
+      VALUES ($1, $2, CURRENT_DATE, 'Homework', $3, $4, 'Parent', $5, $6, $7, $8)
+    `, [
+      req.params.studentId,
+      req.body.sessionId,
+      req.file ? req.file.originalname : null,
+      filePath,
+      submissionComment || null,
+      submissionLink || null,
+      commentOnlySubmission,
+      commentOnlySubmission ? false : true
+    ]);
 
-    // Award homework submission badge
-    await awardBadge(req.params.studentId, 'hw_submit', '📝 Homework Hero', 'Submitted homework on time');
-
-    // Check total homework submissions for milestone badges
-    const hwCount = await pool.query('SELECT COUNT(*) as count FROM materials WHERE student_id = $1 AND file_type = \'Homework\'', [req.params.studentId]);
-    const count = parseInt(hwCount.rows[0].count);
-
-    if (count === 5) await awardBadge(req.params.studentId, '5_homework', '📚 5 Homework Superstar', 'Submitted 5 homework assignments!');
-    if (count === 10) await awardBadge(req.params.studentId, '10_homework', '🎓 10 Homework Champion', 'Submitted 10 homework assignments!');
-    if (count === 25) await awardBadge(req.params.studentId, '25_homework', '🏅 25 Homework Master', 'Submitted 25 homework assignments!');
+    if (!commentOnlySubmission) {
+      await awardHomeworkSubmissionRecognition(req.params.studentId);
+    }
 
     notifyAdminsStudentSubmission({
       studentId: req.params.studentId,
       submissionType: 'Homework',
       sessionId: req.body.sessionId || null,
-      fileName: req.file.originalname || ''
+      fileName: req.file?.originalname || (submissionLink ? 'Link submission' : 'Comment submission')
     }).catch((notifyErr) => {
       console.warn('Homework admin push trigger failed:', notifyErr.message);
     });
 
-    res.json({ message: 'Homework uploaded successfully!' });
+    res.json({ message: 'Homework submitted successfully!' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -12023,6 +12298,26 @@ async function awardBadge(studentId, badgeType, badgeName, badgeDescription) {
   }
 }
 
+async function awardHomeworkSubmissionRecognition(studentId) {
+  await awardBadge(studentId, 'hw_submit', '📝 Homework Hero', 'Submitted homework on time');
+
+  const hwCount = await pool.query(`
+    SELECT COUNT(*) as count
+    FROM materials
+    WHERE student_id = $1
+      AND file_type = 'Homework'
+      AND (
+        COALESCE(comment_only_submission, false) = false
+        OR COALESCE(homework_points_approved, false) = true
+      )
+  `, [studentId]);
+
+  const count = parseInt(hwCount.rows[0].count, 10) || 0;
+  if (count === 5) await awardBadge(studentId, '5_homework', '📚 5 Homework Superstar', 'Submitted 5 homework assignments!');
+  if (count === 10) await awardBadge(studentId, '10_homework', '🎓 10 Homework Champion', 'Submitted 10 homework assignments!');
+  if (count === 25) await awardBadge(studentId, '25_homework', '🏅 25 Homework Master', 'Submitted 25 homework assignments!');
+}
+
 const CLASS_POINT_BADGE_MILESTONES = {
   10: { name: '⭐ Class Star', desc: 'Earned 10 class points in live classes!' },
   20: { name: '🌟 Double Star', desc: 'Earned 20 class points in live classes!' },
@@ -12103,6 +12398,7 @@ app.post('/api/students/:id/badges/assign', async (req, res) => {
 const HOMEWORK_POINT_VALUE = 10;
 const CHALLENGE_POINT_VALUE = 10;
 const BADGE_POINT_VALUE = 2;
+const QUIZ_POINT_VALUE = 1; // Points per correct answer (max 10 per quiz)
 
 function getAwardCertificateTitle(periodType) {
   if (periodType === 'week') return 'Student of the Week';
@@ -12147,6 +12443,10 @@ async function calculateStudentScores(startDate, endDate) {
         AND uploaded_by IN ('Parent', 'Admin')
         AND student_id IS NOT NULL
         AND session_id IS NOT NULL
+        AND (
+          COALESCE(comment_only_submission, false) = false
+          OR COALESCE(homework_points_approved, false) = true
+        )
         AND uploaded_at >= $1::date AND uploaded_at < ($2::date + INTERVAL '1 day')
       GROUP BY student_id
     ),
@@ -12356,20 +12656,30 @@ app.get('/api/leaderboard', async (req, res) => {
 
     const result = await pool.query(`
       WITH homework_pts AS (
-        SELECT student_id, COUNT(DISTINCT session_id) * ${HOMEWORK_POINT_VALUE} as pts
-        FROM materials
-        WHERE file_type = 'Homework'
-          AND uploaded_by IN ('Parent', 'Admin')
-          AND student_id IS NOT NULL
-          AND session_id IS NOT NULL
-          ${hwFilter}
-        GROUP BY student_id
+      SELECT student_id, COUNT(DISTINCT session_id) * ${HOMEWORK_POINT_VALUE} as pts
+      FROM materials
+      WHERE file_type = 'Homework'
+        AND uploaded_by IN ('Parent', 'Admin')
+        AND student_id IS NOT NULL
+        AND session_id IS NOT NULL
+        AND (
+          COALESCE(comment_only_submission, false) = false
+          OR COALESCE(homework_points_approved, false) = true
+        )
+        ${hwFilter}
+      GROUP BY student_id
       ),
       challenge_pts AS (
         SELECT student_id, COUNT(*) * ${CHALLENGE_POINT_VALUE} as pts
         FROM student_challenges
         WHERE status = 'Completed'
           ${chFilter}
+        GROUP BY student_id
+      ),
+      quiz_pts AS (
+        SELECT student_id, COALESCE(SUM(points_awarded), 0) as pts
+        FROM quiz_attempts
+        WHERE 1=1 ${useDateFilter ? `AND completed_at >= $1::timestamp AND completed_at < ($2::timestamp + INTERVAL '1 day')` : ''}
         GROUP BY student_id
       ),
       badge_pts AS (
@@ -12390,17 +12700,19 @@ app.get('/api/leaderboard', async (req, res) => {
         s.program_name,
         COALESCE(h.pts, 0) as homework_points,
         COALESCE(c.pts, 0) as challenge_points,
+        COALESCE(q.pts, 0) as quiz_points,
         COALESCE(b.pts, 0) as badge_points,
-        COALESCE(h.pts, 0) + COALESCE(c.pts, 0) + COALESCE(b.pts, 0) as total_score,
+        COALESCE(h.pts, 0) + COALESCE(c.pts, 0) + COALESCE(q.pts, 0) + COALESCE(b.pts, 0) as total_score,
         COALESCE(bc.badge_count, 0) as total_badges,
         (SELECT badge_name FROM student_badges WHERE student_id = s.id ${bdgLatestFilter} ORDER BY earned_date DESC LIMIT 1) as latest_badge
       FROM students s
       LEFT JOIN homework_pts h ON s.id = h.student_id
       LEFT JOIN challenge_pts c ON s.id = c.student_id
+      LEFT JOIN quiz_pts q ON s.id = q.student_id
       LEFT JOIN badge_pts b ON s.id = b.student_id
       LEFT JOIN badge_counts bc ON s.id = bc.student_id
       WHERE s.is_active = true
-        AND (COALESCE(h.pts, 0) + COALESCE(c.pts, 0) + COALESCE(b.pts, 0)) > 0
+        AND (COALESCE(h.pts, 0) + COALESCE(c.pts, 0) + COALESCE(q.pts, 0) + COALESCE(b.pts, 0)) > 0
       ORDER BY total_score DESC, homework_points DESC, challenge_points DESC, badge_points DESC, s.name ASC
     `, params);
     res.json({ leaderboard: result.rows });
@@ -12425,6 +12737,10 @@ app.get('/api/students/:id/score-history', async (req, res) => {
               AND m.file_type = 'Homework'
               AND m.uploaded_by IN ('Parent', 'Admin')
               AND m.session_id IS NOT NULL
+              AND (
+                COALESCE(m.comment_only_submission, false) = false
+                OR COALESCE(m.homework_points_approved, false) = true
+              )
             ORDER BY m.session_id, m.uploaded_at ASC, m.id ASC
           ) first_homework
         ),
@@ -12477,6 +12793,10 @@ app.get('/api/students/:id/score-history', async (req, res) => {
             AND m.file_type = 'Homework'
             AND m.uploaded_by IN ('Parent', 'Admin')
             AND m.session_id IS NOT NULL
+            AND (
+              COALESCE(m.comment_only_submission, false) = false
+              OR COALESCE(m.homework_points_approved, false) = true
+            )
           ORDER BY m.session_id, m.uploaded_at ASC, m.id ASC
         ),
         completed_challenges AS (
@@ -12599,6 +12919,10 @@ app.get('/api/awards/current', async (req, res) => {
     WITH homework_pts AS (
       SELECT student_id, COUNT(DISTINCT session_date) * ${HOMEWORK_POINT_VALUE} as pts FROM materials
       WHERE file_type = 'Homework' AND uploaded_by IN ('Parent', 'Admin')
+        AND (
+          COALESCE(comment_only_submission, false) = false
+          OR COALESCE(homework_points_approved, false) = true
+        )
         AND uploaded_at >= $1::date AND uploaded_at < ($2::date + INTERVAL '1 day')
       GROUP BY student_id
     ),
@@ -12690,12 +13014,16 @@ app.get('/api/awards/by-period', async (req, res) => {
     const { start, end } = req.query;
     if (!start || !end) return res.status(400).json({ error: 'start and end dates required' });
     const result = await pool.query(`
-      WITH homework_pts AS (
-        SELECT student_id, COUNT(DISTINCT session_date) * ${HOMEWORK_POINT_VALUE} as pts FROM materials
-        WHERE file_type = 'Homework' AND uploaded_by IN ('Parent', 'Admin')
-          AND uploaded_at >= $1::date AND uploaded_at < ($2::date + INTERVAL '1 day')
-        GROUP BY student_id
-      ),
+    WITH homework_pts AS (
+      SELECT student_id, COUNT(DISTINCT session_date) * ${HOMEWORK_POINT_VALUE} as pts FROM materials
+      WHERE file_type = 'Homework' AND uploaded_by IN ('Parent', 'Admin')
+        AND (
+          COALESCE(comment_only_submission, false) = false
+          OR COALESCE(homework_points_approved, false) = true
+        )
+        AND uploaded_at >= $1::date AND uploaded_at < ($2::date + INTERVAL '1 day')
+      GROUP BY student_id
+    ),
       challenge_pts AS (
         SELECT student_id, COUNT(*) * ${CHALLENGE_POINT_VALUE} as pts FROM student_challenges
         WHERE status = 'Completed'
@@ -12961,16 +13289,26 @@ app.get('/api/class-feedback/all', async (req, res) => {
 
 // ==================== HOMEWORK GRADING ====================
 app.post('/api/materials/:id/grade', async (req, res) => {
-  const { grade, comments } = req.body;
+  const { grade, comments, approve_homework_points } = req.body;
   try {
+    const materialBeforeResult = await pool.query(
+      'SELECT id, student_id, comment_only_submission, homework_points_approved FROM materials WHERE id = $1',
+      [req.params.id]
+    );
+    const materialBefore = materialBeforeResult.rows[0];
+    const shouldApproveHomeworkPoints = approve_homework_points === true || approve_homework_points === 'true';
     await pool.query(`
       UPDATE materials SET
         feedback_grade = $1,
         feedback_comments = $2,
         feedback_given = 1,
-        feedback_date = CURRENT_TIMESTAMP
-      WHERE id = $3
-    `, [grade, comments, req.params.id]);
+        feedback_date = CURRENT_TIMESTAMP,
+        homework_points_approved = CASE
+          WHEN COALESCE(comment_only_submission, false) = true AND $3::boolean = true THEN true
+          ELSE homework_points_approved
+        END
+      WHERE id = $4
+    `, [grade, comments, shouldApproveHomeworkPoints, req.params.id]);
 
     // Get material details with student info for email
     const materialResult = await pool.query(`
@@ -12983,6 +13321,14 @@ app.post('/api/materials/:id/grade', async (req, res) => {
 
     if (materialResult.rows[0]) {
       const material = materialResult.rows[0];
+      if (
+        material.file_type === 'Homework' &&
+        materialBefore?.comment_only_submission &&
+        !materialBefore?.homework_points_approved &&
+        shouldApproveHomeworkPoints
+      ) {
+        await awardHomeworkSubmissionRecognition(material.student_id);
+      }
       const materialType = material.file_type === 'Classwork' ? 'Classwork' : 'Homework';
 
       // Award badge
@@ -13026,8 +13372,14 @@ app.post('/api/materials/:id/grade', async (req, res) => {
 // Annotate homework: receives base64 image, uploads to Cloudinary, saves corrected file + grade
 app.post('/api/materials/:id/annotate', express.json({ limit: '20mb' }), async (req, res) => {
   try {
-    const { image_data, grade, comments } = req.body;
+    const { image_data, grade, comments, approve_homework_points } = req.body;
     if (!image_data) return res.status(400).json({ error: 'No annotated image data' });
+    const shouldApproveHomeworkPoints = approve_homework_points === true || approve_homework_points === 'true';
+    const materialBeforeResult = await pool.query(
+      'SELECT id, student_id, comment_only_submission, homework_points_approved FROM materials WHERE id = $1',
+      [req.params.id]
+    );
+    const materialBefore = materialBeforeResult.rows[0];
 
     // Decode base64 to buffer
     const base64Data = image_data.replace(/^data:image\/\w+;base64,/, '');
@@ -13059,9 +13411,13 @@ app.post('/api/materials/:id/annotate', express.json({ limit: '20mb' }), async (
         feedback_grade = $2,
         feedback_comments = $3,
         feedback_given = 1,
-        feedback_date = CURRENT_TIMESTAMP
-      WHERE id = $4
-    `, [correctedUrl, grade || null, comments || null, req.params.id]);
+        feedback_date = CURRENT_TIMESTAMP,
+        homework_points_approved = CASE
+          WHEN COALESCE(comment_only_submission, false) = true AND $4::boolean = true THEN true
+          ELSE homework_points_approved
+        END
+      WHERE id = $5
+    `, [correctedUrl, grade || null, comments || null, shouldApproveHomeworkPoints, req.params.id]);
 
     // Get material details for email
     const materialResult = await pool.query(`
@@ -13074,6 +13430,15 @@ app.post('/api/materials/:id/annotate', express.json({ limit: '20mb' }), async (
     if (materialResult.rows[0]) {
       const material = materialResult.rows[0];
       await awardBadge(material.student_id, 'graded_hw', '📚 Homework Hero', 'Received homework feedback');
+
+      if (
+        material.file_type === 'Homework' &&
+        materialBefore?.comment_only_submission &&
+        !materialBefore?.homework_points_approved &&
+        shouldApproveHomeworkPoints
+      ) {
+        await awardHomeworkSubmissionRecognition(material.student_id);
+      }
 
       if (material.parent_email) {
         const materialType = material.file_type === 'Classwork' ? 'Classwork' : 'Homework';
@@ -13364,30 +13729,34 @@ app.post('/api/homework/ai-feedback', express.json(), async (req, res) => {
     if (!teacher_notes) return res.status(400).json({ error: 'teacher_notes is required' });
 
     const firstName = (student_name || 'the student').split(' ')[0];
-    const prompt = `You are a warm, encouraging English language teacher writing homework feedback directly to a student.
+    const systemPrompt = `You generate homework feedback for a teacher. The teacher will provide their own prompt and desired style. Follow the teacher's prompt closely instead of using one fixed format.
 
-Student first name: ${firstName}
-Homework file: ${file_name || 'submitted homework'}
-Teacher's quick notes: "${teacher_notes}"
-
-Write detailed, friendly feedback (4-6 sentences) in second person, addressed directly to the student by their first name (e.g. "Great work, ${firstName}!"). Use a warm, positive tone with interjections like "Awesome!", "Keep it up!", "Fantastic effort!", etc. Be specific, mention what was done well, and give at least one clear suggestion for improvement. End with a motivating, personal closing line.
-
-Also suggest a grade from: A+, A, B+, B, C+, C, Needs Improvement.
-
-Return ONLY valid JSON:
+Always return ONLY valid JSON:
 {
-  "feedback": "The full feedback text here...",
+  "feedback": "full feedback text",
   "grade": "A"
 }
-Return ONLY JSON. No markdown.`;
+
+Rules:
+- The feedback can vary in tone, structure, length, and style based on the teacher prompt.
+- If the teacher prompt does not specify style, choose a clear, parent-friendly style.
+- Always include a grade suggestion from: A+, A, B+, B, C+, C, Needs Improvement.
+- Do not return markdown or extra explanation outside JSON.`;
+
+    const userPrompt = `Student first name: ${firstName}
+Homework file: ${file_name || 'submitted homework'}
+Teacher prompt: ${teacher_notes}`;
 
     const response = await axios.post(
       'https://api.groq.com/openai/v1/chat/completions',
       {
         model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'user', content: prompt }],
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
         max_tokens: 512,
-        temperature: 0.5
+        temperature: 0.8
       },
       { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` }, timeout: 15000 }
     );
@@ -13542,13 +13911,7 @@ app.post('/api/homework/mark-done', async (req, res) => {
       VALUES ($1, $2, $3, 'Homework', $4, 'MANUAL', 'Admin')
     `, [student_id, sessId, sessDate, note || 'Completed offline']);
 
-    // Award homework badges same as parent upload
-    await awardBadge(student_id, 'hw_submit', '📝 Homework Hero', 'Submitted homework on time');
-    const hwCount = await pool.query("SELECT COUNT(*) as count FROM materials WHERE student_id = $1 AND file_type = 'Homework'", [student_id]);
-    const count = parseInt(hwCount.rows[0].count);
-    if (count === 5) await awardBadge(student_id, '5_homework', '📚 5 Homework Superstar', 'Submitted 5 homework assignments!');
-    if (count === 10) await awardBadge(student_id, '10_homework', '🎓 10 Homework Champion', 'Submitted 10 homework assignments!');
-    if (count === 25) await awardBadge(student_id, '25_homework', '🏅 25 Homework Master', 'Submitted 25 homework assignments!');
+    await awardHomeworkSubmissionRecognition(student_id);
 
     res.json({ success: true });
   } catch (err) {
@@ -13629,8 +13992,9 @@ app.post('/api/challenges', async (req, res) => {
 
     // Send email notifications to parents if requested
     let emailsSent = 0;
+    const dueDate = new Date(week_end).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
     if (send_email === true || send_email === 'true') {
-      const dueDate = new Date(week_end).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
       const startDate = new Date(week_start).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
       const typeEmojis = { 'Reading': '📖', 'Vocabulary': '📚', 'Speaking': '🗣️', 'Writing': '✍️', 'Homework': '📝', 'Practice': '🎯', 'General': '⭐' };
       const emoji = typeEmojis[challenge_type] || '🎯';
@@ -13682,15 +14046,15 @@ app.post('/api/challenges', async (req, res) => {
     }
 
     // Send admin push for challenge created
-    if (students.rows.length > 0) {
+    if (assignedStudents.length > 0) {
       await sendPushToAdmins(
         `📝 New Challenge Created: ${title}`,
-        `Challenge "${title}" assigned to ${Students.rows.length} student(s). Due: ${dueDate}`,
+        `Challenge "${title}" assigned to ${assignedStudents.length} student(s). Due: ${dueDate}`,
         {
           type: 'challenge_created_admin',
-          challengeId: String(challengeId),
+          challengeId: String(challenge.id),
           challengeTitle: title,
-          studentCount: students.rows.length,
+          studentCount: assignedStudents.length,
           dueDate: dueDate,
           url: `${process.env.APP_URL || 'https://fluent-feathers-academy-lms.onrender.com'}/admin.html`
         }
@@ -13972,6 +14336,366 @@ app.delete('/api/challenges/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM weekly_challenges WHERE id = $1', [req.params.id]);
     res.json({ success: true, message: 'Challenge deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== DAILY QUIZ API ====================
+
+// Get quiz status for current student
+app.get('/api/daily-quiz/status', async (req, res) => {
+  try {
+    const studentId = req.studentId;
+    if (!studentId) {
+      return res.status(401).json({ error: 'Student authentication required' });
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+
+    // Check if student already attempted today
+    const attemptResult = await pool.query(
+      'SELECT * FROM quiz_attempts WHERE student_id = $1 AND DATE(created_at) = $2 ORDER BY created_at DESC LIMIT 1',
+      [studentId, today]
+    );
+
+    const lastAttempt = attemptResult.rows[0];
+    const canTakeQuiz = !lastAttempt;
+
+    // Calculate next quiz time (24 hours after last attempt)
+    let nextQuizTime = null;
+    if (lastAttempt) {
+      const lastAttemptTime = new Date(lastAttempt.created_at);
+      nextQuizTime = new Date(lastAttemptTime.getTime() + 24 * 60 * 60 * 1000);
+    }
+
+    res.json({
+      canTakeQuiz,
+      lastAttempt: lastAttempt ? {
+        score: lastAttempt.score,
+        total_questions: lastAttempt.total_questions,
+        points_earned: lastAttempt.points_earned,
+        created_at: lastAttempt.created_at
+      } : null,
+      nextQuizTime
+    });
+  } catch (err) {
+    console.error('Quiz status error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Start daily quiz for current student
+app.post('/api/daily-quiz/start', async (req, res) => {
+  try {
+    const studentId = req.studentId;
+    if (!studentId) {
+      return res.status(401).json({ error: 'Student authentication required' });
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+
+    // Check if student already attempted today
+    const attemptResult = await pool.query(
+      'SELECT id FROM quiz_attempts WHERE student_id = $1 AND DATE(created_at) = $2',
+      [studentId, today]
+    );
+
+    if (attemptResult.rows.length > 0) {
+      return res.status(409).json({ error: 'You have already attempted today\'s quiz' });
+    }
+
+    // Get today's quiz questions
+    const quizResult = await pool.query(`
+      SELECT dq.*, qq.question_text, qq.options, qq.correct_answer, qq.explanation, qq.category
+      FROM daily_quizzes dq
+      JOIN quiz_questions qq ON dq.question_id = qq.id
+      WHERE dq.quiz_date = $1 AND qq.is_active = true
+      ORDER BY dq.id
+    `, [today]);
+
+    if (quizResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Daily quiz not available yet. Please check back later.' });
+    }
+
+    // Get student level (default to beginner if not set)
+    const studentResult = await pool.query('SELECT level FROM students WHERE id = $1', [studentId]);
+    const studentLevel = studentResult.rows[0]?.level || 'beginner';
+
+    // Filter questions by student level
+    const levelQuestions = quizResult.rows.filter(q => q.level === studentLevel);
+
+    if (levelQuestions.length < 10) {
+      // If not enough questions for this level, get questions from other levels
+      const allQuestions = quizResult.rows;
+      const shuffled = allQuestions.sort(() => 0.5 - Math.random());
+      const questions = shuffled.slice(0, 10);
+    } else {
+      // Use level-specific questions
+      const shuffled = levelQuestions.sort(() => 0.5 - Math.random());
+      var questions = shuffled.slice(0, 10);
+    }
+
+    res.json({
+      quiz_date: today,
+      questions: questions.map(q => ({
+        id: q.question_id,
+        question_text: q.question_text,
+        options: q.options,
+        category: q.category,
+        explanation: q.explanation
+      }))
+    });
+  } catch (err) {
+    console.error('Quiz start error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Submit quiz answers
+app.post('/api/daily-quiz/submit', async (req, res) => {
+  try {
+    const { answers, timeSpent } = req.body;
+    const studentId = req.studentId;
+
+    if (!studentId) {
+      return res.status(401).json({ error: 'Student authentication required' });
+    }
+
+    if (!Array.isArray(answers) || answers.length !== 10) {
+      return res.status(400).json({ error: 'Must provide exactly 10 answers' });
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+
+    // Check if already attempted today
+    const existingAttempt = await pool.query(
+      'SELECT id FROM quiz_attempts WHERE student_id = $1 AND DATE(created_at) = $2',
+      [studentId, today]
+    );
+
+    if (existingAttempt.rows.length > 0) {
+      return res.status(409).json({ error: 'You have already attempted today\'s quiz' });
+    }
+
+    // Get today's questions to calculate score
+    const quizResult = await pool.query(`
+      SELECT dq.*, qq.correct_answer
+      FROM daily_quizzes dq
+      JOIN quiz_questions qq ON dq.question_id = qq.id
+      WHERE dq.quiz_date = $1 AND qq.is_active = true
+      ORDER BY dq.id
+    `, [today]);
+
+    if (quizResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Quiz not available' });
+    }
+
+    // Get student level and filter questions
+    const studentResult = await pool.query('SELECT level FROM students WHERE id = $1', [studentId]);
+    const studentLevel = studentResult.rows[0]?.level || 'beginner';
+    const levelQuestions = quizResult.rows.filter(q => q.level === studentLevel);
+
+    let questionsToCheck;
+    if (levelQuestions.length < 10) {
+      const shuffled = quizResult.rows.sort(() => 0.5 - Math.random());
+      questionsToCheck = shuffled.slice(0, 10);
+    } else {
+      const shuffled = levelQuestions.sort(() => 0.5 - Math.random());
+      questionsToCheck = shuffled.slice(0, 10);
+    }
+
+    // Calculate score
+    let correctAnswers = 0;
+    answers.forEach((answer, index) => {
+      if (index < questionsToCheck.length && answer === questionsToCheck[index].correct_answer) {
+        correctAnswers++;
+      }
+    });
+
+    const pointsEarned = correctAnswers * QUIZ_POINT_VALUE;
+
+    // Save attempt
+    await pool.query(`
+      INSERT INTO quiz_attempts (student_id, quiz_date, answers, score, total_questions, points_earned, time_spent)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [studentId, today, JSON.stringify(answers), correctAnswers, 10, pointsEarned, timeSpent || 0]);
+
+    // Update student points
+    await pool.query('UPDATE students SET points = points + $1 WHERE id = $2', [pointsEarned, studentId]);
+
+    res.json({
+      score: correctAnswers,
+      total_questions: 10,
+      points_earned: pointsEarned,
+      time_spent: timeSpent || 0,
+      message: `Great job! You scored ${correctAnswers}/10 and earned ${pointsEarned} points!`
+    });
+  } catch (err) {
+    console.error('Quiz submission error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get student's quiz history
+app.get('/api/daily-quiz/history', async (req, res) => {
+  try {
+    const studentId = req.studentId;
+    if (!studentId) {
+      return res.status(401).json({ error: 'Student authentication required' });
+    }
+
+    const result = await pool.query(`
+      SELECT score, total_questions, points_earned, time_spent, created_at
+      FROM quiz_attempts
+      WHERE student_id = $1
+      ORDER BY created_at DESC
+      LIMIT 30
+    `, [studentId]);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Quiz history error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Get all quiz questions
+app.get('/api/admin/quiz-questions', async (req, res) => {
+  try {
+    const { level, category } = req.query;
+    let query = 'SELECT * FROM quiz_questions WHERE is_active = true';
+    const params = [];
+    let paramIndex = 1;
+
+    if (level) {
+      query += ` AND level = $${paramIndex}`;
+      params.push(level);
+      paramIndex++;
+    }
+
+    if (category) {
+      query += ` AND category = $${paramIndex}`;
+      params.push(category);
+      paramIndex++;
+    }
+
+    query += ' ORDER BY created_at DESC';
+
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Add new quiz question
+app.post('/api/admin/quiz-questions', async (req, res) => {
+  try {
+    const { level, category, question_text, options, correct_answer, explanation, audio_url, image_url } = req.body;
+
+    if (!['beginner', 'intermediate', 'advanced'].includes(level)) {
+      return res.status(400).json({ error: 'Invalid level' });
+    }
+
+    if (!['grammar', 'vocabulary', 'listening', 'reading', 'pronunciation', 'phonics'].includes(category)) {
+      return res.status(400).json({ error: 'Invalid category' });
+    }
+
+    if (!Array.isArray(options) || options.length !== 4) {
+      return res.status(400).json({ error: 'Must provide exactly 4 options' });
+    }
+
+    if (typeof correct_answer !== 'number' || correct_answer < 0 || correct_answer > 3) {
+      return res.status(400).json({ error: 'Correct answer must be 0-3' });
+    }
+
+    const result = await pool.query(`
+      INSERT INTO quiz_questions (level, category, question_text, options, correct_answer, explanation, audio_url, image_url)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+    `, [level, category, question_text, JSON.stringify(options), correct_answer, explanation, audio_url, image_url]);
+
+    res.json({ success: true, question: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Update quiz question
+app.put('/api/admin/quiz-questions/:id', async (req, res) => {
+  try {
+    const { level, category, question_text, options, correct_answer, explanation, audio_url, image_url, is_active } = req.body;
+
+    await pool.query(`
+      UPDATE quiz_questions
+      SET level = $1, category = $2, question_text = $3, options = $4, correct_answer = $5,
+          explanation = $6, audio_url = $7, image_url = $8, is_active = $9, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $10
+    `, [level, category, question_text, JSON.stringify(options), correct_answer, explanation, audio_url, image_url, is_active, req.params.id]);
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Delete quiz question
+app.delete('/api/admin/quiz-questions/:id', async (req, res) => {
+  try {
+    await pool.query('UPDATE quiz_questions SET is_active = false WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Generate today's quiz manually
+app.post('/api/admin/generate-daily-quiz', async (req, res) => {
+  try {
+    await generateDailyQuiz();
+    res.json({ success: true, message: 'Daily quiz generated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Get quiz stats - today's questions count
+app.get('/api/admin/quiz-stats/today-questions', async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const result = await pool.query(`
+      SELECT COUNT(*) as count
+      FROM daily_quizzes dq
+      JOIN quiz_questions qq ON dq.question_id = qq.id
+      WHERE dq.quiz_date = $1 AND qq.is_active = true
+    `, [today]);
+    res.json({ count: parseInt(result.rows[0].count) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Get quiz stats - today's attempts count
+app.get('/api/admin/quiz-stats/today-attempts', async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const result = await pool.query(`
+      SELECT COUNT(*) as count
+      FROM quiz_attempts
+      WHERE DATE(created_at) = $1
+    `, [today]);
+    res.json({ count: parseInt(result.rows[0].count) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Get quiz stats - total questions count
+app.get('/api/admin/quiz-stats/total-questions', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT COUNT(*) as count FROM quiz_questions WHERE is_active = true');
+    res.json({ count: parseInt(result.rows[0].count) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -419,6 +419,7 @@
         <button class="nav-btn" onclick="showTab('classRatings', event)">⭐ <span>Class Ratings</span></button>
         <button class="nav-btn" onclick="showTab('leaderboard', event)">🏆 <span>Leaderboard</span></button>
         <button class="nav-btn" onclick="showTab('challenges', event)">🎯 <span>Challenges</span></button>
+        <button class="nav-btn" onclick="showTab('quiz', event)">🧠 <span>Daily Quiz</span></button>
         <button class="nav-btn" onclick="showTab('resources', event)">📚 <span>Resources</span></button>
         <button class="nav-btn" onclick="window.location.href='social-media-admin.html'">🎬 <span>Social Media</span></button>
         <button class="nav-btn" onclick="showTab('emails', event)">📧 <span>Email Logs</span></button>
@@ -1206,16 +1207,17 @@
         <h3 style="margin:0 0 4px;color:#2d3748;font-size:16px;">&#x1F4DD; Grade Homework</h3>
         <p style="margin:0 0 10px;color:#718096;font-size:13px;">Student: <strong id="hwFeedbackStudent"></strong> &mdash; <span id="hwFeedbackFile" style="color:#B05D9E;"></span></p>
         <div id="hwFeedbackImagePreview" style="margin-bottom:12px;display:none;"></div>
+        <div id="hwFeedbackSubmissionMeta" style="display:none;margin-bottom:12px;padding:10px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;"></div>
         <input type="hidden" id="hwFeedbackId">
 
         <!-- AI Notes bar -->
         <div style="background:#f5f0ff;border:1.5px solid #b794f4;border-radius:10px;padding:11px 13px;margin-bottom:14px;">
           <div style="font-size:11px;font-weight:800;color:#553c9a;margin-bottom:6px;">&#x2728; AI Feedback Generator</div>
           <div style="display:flex;gap:7px;align-items:flex-start;">
-            <textarea id="hwFeedbackNotes" rows="2" placeholder='e.g. "Great effort, sentences were clear but had some spelling mistakes, needs to work on grammar"' style="flex:1;background:#fff;border:1px solid #b794f4;border-radius:7px;padding:7px 9px;font-size:12px;resize:vertical;outline:none;color:#2d3748;"></textarea>
+            <textarea id="hwFeedbackNotes" rows="2" placeholder='e.g. Make this feedback playful and concise, mention spelling and grammar, end with one action step' style="flex:1;background:#fff;border:1px solid #b794f4;border-radius:7px;padding:7px 9px;font-size:12px;resize:vertical;outline:none;color:#2d3748;"></textarea>
             <button id="hwAiBtn" type="button" onclick="aiGenerateHwFeedback()" style="background:#764ba2;border:none;border-radius:7px;padding:10px 14px;color:#fff;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">&#x2728; AI Feedback</button>
           </div>
-          <div style="font-size:10px;color:#a78bca;margin-top:4px;">AI will write polished student-facing feedback in second person &amp; suggest a grade. You can edit before saving.</div>
+          <div style="font-size:10px;color:#a78bca;margin-top:4px;">Type the exact prompt or style you want. AI will follow your prompt and return feedback plus a grade suggestion.</div>
         </div>
 
         <div style="background:#fffaf0;border:1.5px solid #f6ad55;border-radius:10px;padding:11px 13px;margin-bottom:14px;">
@@ -1234,6 +1236,15 @@
             <label style="font-size:12px;font-weight:700;color:#4a5568;display:block;margin-bottom:4px;">Grade *</label>
             <input id="hwFeedbackGrade" type="text" placeholder="A+, A, B+, B, C+…" style="width:100%;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:13px;outline:none;">
           </div>
+        </div>
+        <div id="hwCommentApprovalWrap" style="display:none;margin-bottom:14px;padding:10px 12px;border-radius:10px;background:#fffaf0;border:1px solid #f6ad55;">
+          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;">
+            <input id="hwApproveCommentPoints" type="checkbox" style="margin-top:2px;">
+            <span style="font-size:12px;color:#744210;line-height:1.5;">
+              <strong>Approve homework points for this comment/link submission</strong><br>
+              Use this only for comment-only homework. If approved, the student gets the normal 10 homework points.
+            </span>
+          </label>
         </div>
         <div style="margin-bottom:16px;">
           <label style="font-size:12px;font-weight:700;color:#4a5568;display:block;margin-bottom:4px;">Feedback for Parents <span style="color:#e53e3e;">*</span></label>
@@ -1561,6 +1572,127 @@
         <h3 style="margin-bottom: 15px;">📋 All Challenges</h3>
         <div id="challengesList" style="display: grid; gap: 15px;">
           <p style="color: #718096; text-align: center; padding: 30px;">Loading challenges...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily Quiz Tab -->
+    <div id="quizTab" class="tab-content">
+      <div class="section">
+        <h2>🧠 Daily Quiz Management</h2>
+        <p style="color: #718096; margin-bottom: 20px;">Create and manage daily English quizzes for students. Questions rotate daily with score-based points.</p>
+
+        <!-- Quiz Stats -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">
+          <div class="stat-card" style="border-left-color: #38a169;">
+            <h3>📊 Today's Questions</h3>
+            <div class="value" id="todayQuizCount">0</div>
+          </div>
+          <div class="stat-card" style="border-left-color: #3182ce;">
+            <h3>👥 Attempts Today</h3>
+            <div class="value" id="todayAttempts">0</div>
+          </div>
+          <div class="stat-card" style="border-left-color: #805ad5;">
+            <h3>⭐ Total Questions</h3>
+            <div class="value" id="totalQuestions">0</div>
+          </div>
+        </div>
+
+        <!-- Generate Today's Quiz -->
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+          <h3 style="margin-bottom: 15px;">🎯 Generate Today's Quiz</h3>
+          <p style="margin-bottom: 15px; opacity: 0.9;">Automatically select 10 questions for each level from the question bank.</p>
+          <button onclick="generateTodayQuiz()" class="btn" style="background: white; color: #667eea; font-weight: bold;">⚡ Generate Quiz</button>
+        </div>
+
+        <!-- Add Question Form -->
+        <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 25px; border-radius: 12px; margin-bottom: 25px;">
+          <h3 style="color: white; margin-bottom: 20px;">➕ Add New Question</h3>
+          <form id="addQuestionForm" style="display: grid; gap: 15px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+              <div>
+                <label style="color: white; font-weight: bold; display: block; margin-bottom: 5px;">Level</label>
+                <select id="questionLevel" required style="width: 100%; padding: 8px; border-radius: 6px; border: none;">
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </div>
+              <div>
+                <label style="color: white; font-weight: bold; display: block; margin-bottom: 5px;">Category</label>
+                <select id="questionCategory" required style="width: 100%; padding: 8px; border-radius: 6px; border: none;">
+                  <option value="grammar">Grammar</option>
+                  <option value="vocabulary">Vocabulary</option>
+                  <option value="listening">Listening</option>
+                  <option value="reading">Reading</option>
+                  <option value="pronunciation">Pronunciation</option>
+                  <option value="phonics">Phonics</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label style="color: white; font-weight: bold; display: block; margin-bottom: 5px;">Question</label>
+              <textarea id="questionText" required placeholder="Enter the question..." style="width: 100%; padding: 8px; border-radius: 6px; border: none; min-height: 60px; resize: vertical;"></textarea>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+              <div>
+                <label style="color: white; font-weight: bold; display: block; margin-bottom: 5px;">Option A</label>
+                <input type="text" id="optionA" required placeholder="Option A" style="width: 100%; padding: 8px; border-radius: 6px; border: none;">
+              </div>
+              <div>
+                <label style="color: white; font-weight: bold; display: block; margin-bottom: 5px;">Option B</label>
+                <input type="text" id="optionB" required placeholder="Option B" style="width: 100%; padding: 8px; border-radius: 6px; border: none;">
+              </div>
+              <div>
+                <label style="color: white; font-weight: bold; display: block; margin-bottom: 5px;">Option C</label>
+                <input type="text" id="optionC" required placeholder="Option C" style="width: 100%; padding: 8px; border-radius: 6px; border: none;">
+              </div>
+              <div>
+                <label style="color: white; font-weight: bold; display: block; margin-bottom: 5px;">Option D</label>
+                <input type="text" id="optionD" required placeholder="Option D" style="width: 100%; padding: 8px; border-radius: 6px; border: none;">
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px;">
+              <div>
+                <label style="color: white; font-weight: bold; display: block; margin-bottom: 5px;">Correct Answer</label>
+                <select id="correctAnswer" required style="width: 100%; padding: 8px; border-radius: 6px; border: none;">
+                  <option value="0">A</option>
+                  <option value="1">B</option>
+                  <option value="2">C</option>
+                  <option value="3">D</option>
+                </select>
+              </div>
+              <div>
+                <label style="color: white; font-weight: bold; display: block; margin-bottom: 5px;">Explanation (Optional)</label>
+                <input type="text" id="questionExplanation" placeholder="Why is this the correct answer?" style="width: 100%; padding: 8px; border-radius: 6px; border: none;">
+              </div>
+            </div>
+            <button type="submit" class="btn" style="background: white; color: #f5576c; font-weight: bold; justify-self: start;">💾 Save Question</button>
+          </form>
+        </div>
+
+        <!-- Questions List -->
+        <h3 style="margin-bottom: 15px;">📋 Question Bank</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+          <select id="filterLevel" onchange="loadQuizQuestions()" style="padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <option value="">All Levels</option>
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+          <select id="filterCategory" onchange="loadQuizQuestions()" style="padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <option value="">All Categories</option>
+            <option value="grammar">Grammar</option>
+            <option value="vocabulary">Vocabulary</option>
+            <option value="listening">Listening</option>
+            <option value="reading">Reading</option>
+            <option value="pronunciation">Pronunciation</option>
+            <option value="phonics">Phonics</option>
+          </select>
+          <div></div>
+        </div>
+        <div id="questionsList" style="display: grid; gap: 15px;">
+          <p style="color: #718096; text-align: center; padding: 30px;">Loading questions...</p>
         </div>
       </div>
     </div>
@@ -5867,6 +5999,15 @@ if (dueEl) {
           const feedbackDisplay = hw.feedback_comments
             ? `<br><small style="color:#4a5568;">💬 ${hw.feedback_comments}</small>`
             : '';
+          const commentDisplay = hw.submission_comment
+            ? `<br><small style="color:#744210;">💬 ${hw.submission_comment}</small>`
+            : '';
+          const linkDisplay = hw.submission_link
+            ? `<br><a href="${hw.submission_link}" target="_blank" style="font-size:0.78rem;color:#2b6cb0;word-break:break-all;">🔗 Open submitted link</a>`
+            : '';
+          const approvalDisplay = hw.comment_only_submission
+            ? `<br><small style="color:${hw.homework_points_approved ? '#2f855a' : '#dd6b20'};">${hw.homework_points_approved ? '✅ Homework points approved' : '⏳ Homework points pending approval'}</small>`
+            : '';
 
           // Create download URL with proper filename
           const downloadUrl = fileUrl && !isLink ? getDownloadUrl(fileUrl, hw.file_name || 'homework') : '';
@@ -5877,16 +6018,20 @@ if (dueEl) {
             <td>
               ${fileUrl ? `<a href="${fileUrl}" target="_blank" style="color: #B05D9E; text-decoration: none;">
                 ${fileIcon} ${hw.file_name || (isLink ? 'External Link' : 'Download')}
-              </a>` : `${fileIcon} ${hw.file_name || 'File'}`}
+              </a>` : `${fileIcon} ${hw.file_name || (hw.comment_only_submission ? 'Comment / Link Submission' : 'File')}`}
+              ${!hw.file_name && hw.comment_only_submission ? `<div style="margin-top:4px;color:#744210;font-size:0.82rem;font-weight:700;">Comment / Link submission</div>` : ''}
               ${materialTypeBadge}
+              ${commentDisplay}
+              ${linkDisplay}
             </td>
             <td>${hw.uploaded_at ? new Date(hw.uploaded_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}</td>
-            <td>${gradeDisplay}${feedbackDisplay}${buildIntegrityMiniBadge(hw)}</td>
+            <td>${gradeDisplay}${feedbackDisplay}${approvalDisplay}${buildIntegrityMiniBadge(hw)}</td>
             <td>
               <button onclick="openGradeHomeworkModal(${hw.id})" class="btn btn-sm btn-primary">Grade</button>
               ${(isImage || isPdf) && fileUrl ? `<button onclick="openAnnotationEditor(${hw.id}, decodeURIComponent('${encodeURIComponent(fileUrl)}'), '${isPdf ? 'pdf' : 'image'}', decodeURIComponent('${encodeURIComponent(hw.student_name || '')}'))" class="btn btn-sm" style="background:#e53e3e;color:white;">✏️ Annotate</button>` : ''}
               ${hw.corrected_file_path ? `<button onclick="previewFile('${hw.corrected_file_path}', 'image', 'Corrected - ${hw.file_name || 'File'}')" class="btn btn-sm" style="background:#f59e0b;color:white;">📝 View Corrected</button>` : ''}
               ${previewBtn}
+              ${hw.submission_link ? `<a href="${hw.submission_link}" target="_blank" class="btn btn-sm" style="background:#2b6cb0;color:white;text-decoration:none;">🔗 Open Link</a>` : ''}
               ${downloadUrl ? `<a href="${downloadUrl}" download="${hw.file_name || 'homework'}" class="btn btn-sm" style="background: #B05D9E; color: white; text-decoration: none;">⬇️ Download</a>` : ''}
               <button onclick="deleteHomework(${hw.id})" class="btn btn-sm btn-danger">Delete</button>
             </td>
@@ -5902,7 +6047,7 @@ if (dueEl) {
       const hw = homeworkSubmissionCache[homeworkId];
       if (!hw) { alert('Could not load submission details. Please refresh and try again.'); return; }
       const studentName = hw.student_name || '';
-      const fileName = hw.file_name || '';
+      const fileName = hw.file_name || (hw.comment_only_submission ? 'Comment / Link Submission' : '');
       const fileUrl = hw.file_url || '';
       const isImage = hw.file_kind === 'image';
       document.getElementById('hwFeedbackId').value = homeworkId;
@@ -5910,9 +6055,20 @@ if (dueEl) {
       const firstName = studentName.split(' ')[0];
       document.getElementById('hwFeedbackStudent').textContent = firstName;
       document.getElementById('hwFeedbackFile').textContent = fileName;
-      document.getElementById('hwFeedbackGrade').value = '';
-      document.getElementById('hwFeedbackComments').value = '';
+      document.getElementById('hwFeedbackGrade').value = hw.feedback_grade || '';
+      document.getElementById('hwFeedbackComments').value = hw.feedback_comments || '';
       document.getElementById('hwFeedbackNotes').value = '';
+      const approvalWrap = document.getElementById('hwCommentApprovalWrap');
+      const approvalInput = document.getElementById('hwApproveCommentPoints');
+      approvalWrap.style.display = hw.comment_only_submission ? 'block' : 'none';
+      approvalInput.checked = !!hw.homework_points_approved;
+      approvalInput.disabled = !hw.comment_only_submission;
+      const metaDiv = document.getElementById('hwFeedbackSubmissionMeta');
+      const metaParts = [];
+      if (hw.submission_comment) metaParts.push(`<div style="margin-bottom:8px;"><strong style="color:#4a5568;">Comment:</strong><div style="margin-top:4px;color:#2d3748;white-space:pre-wrap;">${hw.submission_comment}</div></div>`);
+      if (hw.submission_link) metaParts.push(`<div><strong style="color:#4a5568;">Link:</strong> <a href="${hw.submission_link}" target="_blank" style="color:#2b6cb0;word-break:break-all;">${hw.submission_link}</a></div>`);
+      metaDiv.innerHTML = metaParts.join('');
+      metaDiv.style.display = metaParts.length ? 'block' : 'none';
       // Show image if available
       const imgDiv = document.getElementById('hwFeedbackImagePreview');
       if (imgDiv) {
@@ -5935,8 +6091,9 @@ if (dueEl) {
       renderHwIntegrityPanel(currentHwIntegrity);
       const integrityBtn = document.getElementById('hwIntegrityBtn');
       if (integrityBtn) {
-        integrityBtn.disabled = false;
-        integrityBtn.textContent = currentHwIntegrity ? 'Re-analyze' : 'Analyze';
+        const canAnalyze = !!fileUrl && ['image', 'pdf'].includes(hw.file_kind || '');
+        integrityBtn.disabled = !canAnalyze;
+        integrityBtn.textContent = canAnalyze ? (currentHwIntegrity ? 'Re-analyze' : 'Analyze') : 'No file to analyze';
       }
       document.getElementById('hwFeedbackModal').style.display = 'flex';
     }
@@ -5991,7 +6148,7 @@ if (dueEl) {
 
     async function aiGenerateHwFeedback() {
       const notes = document.getElementById('hwFeedbackNotes').value.trim();
-      if (!notes) { document.getElementById('hwFeedbackNotes').focus(); alert('Please type your quick notes about the homework first.'); return; }
+      if (!notes) { document.getElementById('hwFeedbackNotes').focus(); alert('Please type the AI prompt you want to use first.'); return; }
       const btn = document.getElementById('hwAiBtn');
       const studentName = document.getElementById('hwFeedbackStudent').textContent;
       const fileName    = document.getElementById('hwFeedbackFile').textContent;
@@ -6017,9 +6174,10 @@ if (dueEl) {
       const id       = document.getElementById('hwFeedbackId').value;
       const grade    = document.getElementById('hwFeedbackGrade').value.trim();
       const comments = document.getElementById('hwFeedbackComments').value.trim();
+      const approveHomeworkPoints = document.getElementById('hwApproveCommentPoints').checked;
       if (!grade)    { document.getElementById('hwFeedbackGrade').focus();    alert('Please enter a grade.'); return; }
       if (!comments) { document.getElementById('hwFeedbackComments').focus(); alert('Please write feedback for the parents before saving.'); return; }
-      await gradeHomework(id, grade, comments);
+      await gradeHomework(id, grade, comments, approveHomeworkPoints);
       closeHwFeedbackModal();
     }
 
@@ -6135,12 +6293,12 @@ if (dueEl) {
       previewFile(url, 'video', 'Video');
     }
 
-    async function gradeHomework(homeworkId, grade, comments) {
+    async function gradeHomework(homeworkId, grade, comments, approveHomeworkPoints = false) {
       try {
         const res = await fetch(`/api/materials/${homeworkId}/grade`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ grade, comments })
+          body: JSON.stringify({ grade, comments, approve_homework_points: approveHomeworkPoints })
         });
 
         if (res.ok) {
@@ -12768,6 +12926,9 @@ async function saveEditedPayment() {
       if (name === 'calendar') {
         loadCalendar();
       }
+      if (name === 'quiz') {
+        setTimeout(initializeQuizTab, 100);
+      }
       if (name === 'adminProfile') {
         loadAdminProfile();
       }
@@ -14536,7 +14697,187 @@ async function aiQuickFill(formType) {
   }
 }
 
+// ==================== QUIZ MANAGEMENT FUNCTIONS ====================
 
+// Load quiz statistics
+async function loadQuizStats() {
+  try {
+    const [todayQuizRes, attemptsRes, totalRes] = await Promise.all([
+      fetch('/api/admin/quiz-stats/today-questions'),
+      fetch('/api/admin/quiz-stats/today-attempts'),
+      fetch('/api/admin/quiz-stats/total-questions')
+    ]);
+
+    const todayQuiz = await todayQuizRes.json();
+    const attempts = await attemptsRes.json();
+    const total = await totalRes.json();
+
+    document.getElementById('todayQuizCount').textContent = todayQuiz.count || 0;
+    document.getElementById('todayAttempts').textContent = attempts.count || 0;
+    document.getElementById('totalQuestions').textContent = total.count || 0;
+  } catch (error) {
+    console.error('Error loading quiz stats:', error);
+  }
+}
+
+// Generate today's quiz
+async function generateTodayQuiz() {
+  if (!confirm('This will generate a new quiz for today by selecting 10 questions from each level. Continue?')) return;
+
+  try {
+    const response = await fetch('/api/admin/generate-daily-quiz', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (response.ok) {
+      alert('✅ Today\'s quiz generated successfully!');
+      loadQuizStats();
+    } else {
+      const error = await response.json();
+      alert('❌ Error: ' + (error.message || 'Failed to generate quiz'));
+    }
+  } catch (error) {
+    console.error('Error generating quiz:', error);
+    alert('❌ Error generating quiz: ' + error.message);
+  }
+}
+
+// Load quiz questions with filters
+async function loadQuizQuestions() {
+  try {
+    const level = document.getElementById('filterLevel').value;
+    const category = document.getElementById('filterCategory').value;
+
+    let url = '/api/admin/quiz-questions';
+    const params = new URLSearchParams();
+    if (level) params.append('level', level);
+    if (category) params.append('category', category);
+    if (params.toString()) url += '?' + params.toString();
+
+    const response = await fetch(url);
+    const questions = await response.json();
+
+    const container = document.getElementById('questionsList');
+    if (questions.length === 0) {
+      container.innerHTML = '<p style="color: #718096; text-align: center; padding: 30px;">No questions found. Add some questions to get started!</p>';
+      return;
+    }
+
+    container.innerHTML = questions.map(q => `
+      <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+          <div>
+            <span style="background: ${getLevelColor(q.level)}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold;">${q.level.toUpperCase()}</span>
+            <span style="background: ${getCategoryColor(q.category)}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; margin-left: 8px;">${q.category.toUpperCase()}</span>
+          </div>
+          <button onclick="deleteQuestion(${q.id})" style="background: #e53e3e; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">🗑️ Delete</button>
+        </div>
+        <h4 style="margin-bottom: 10px; color: #2d3748;">${q.question_text}</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+          <div style="padding: 8px; background: ${q.correct_answer === 0 ? '#c6f6d5' : '#f7fafc'}; border-radius: 6px; border: 2px solid ${q.correct_answer === 0 ? '#38a169' : '#e2e8f0'};">A) ${q.options[0]}</div>
+          <div style="padding: 8px; background: ${q.correct_answer === 1 ? '#c6f6d5' : '#f7fafc'}; border-radius: 6px; border: 2px solid ${q.correct_answer === 1 ? '#38a169' : '#e2e8f0'};">B) ${q.options[1]}</div>
+          <div style="padding: 8px; background: ${q.correct_answer === 2 ? '#c6f6d5' : '#f7fafc'}; border-radius: 6px; border: 2px solid ${q.correct_answer === 2 ? '#38a169' : '#e2e8f0'};">C) ${q.options[2]}</div>
+          <div style="padding: 8px; background: ${q.correct_answer === 3 ? '#c6f6d5' : '#f7fafc'}; border-radius: 6px; border: 2px solid ${q.correct_answer === 3 ? '#38a169' : '#e2e8f0'};">D) ${q.options[3]}</div>
+        </div>
+        ${q.explanation ? `<p style="color: #718096; font-size: 0.9rem; font-style: italic;">💡 ${q.explanation}</p>` : ''}
+      </div>
+    `).join('');
+  } catch (error) {
+    console.error('Error loading questions:', error);
+    document.getElementById('questionsList').innerHTML = '<p style="color: #e53e3e; text-align: center; padding: 30px;">Error loading questions. Please try again.</p>';
+  }
+}
+
+// Helper functions for colors
+function getLevelColor(level) {
+  switch(level) {
+    case 'beginner': return '#38a169';
+    case 'intermediate': return '#3182ce';
+    case 'advanced': return '#805ad5';
+    default: return '#a0aec0';
+  }
+}
+
+function getCategoryColor(category) {
+  const colors = {
+    grammar: '#e53e3e',
+    vocabulary: '#38a169',
+    listening: '#3182ce',
+    reading: '#805ad5',
+    pronunciation: '#dd6b20',
+    phonics: '#d69e2e'
+  };
+  return colors[category] || '#a0aec0';
+}
+
+// Delete question
+async function deleteQuestion(id) {
+  if (!confirm('Are you sure you want to delete this question?')) return;
+
+  try {
+    const response = await fetch(`/api/admin/quiz-questions/${id}`, {
+      method: 'DELETE'
+    });
+
+    if (response.ok) {
+      alert('✅ Question deleted successfully!');
+      loadQuizQuestions();
+      loadQuizStats();
+    } else {
+      alert('❌ Error deleting question');
+    }
+  } catch (error) {
+    console.error('Error deleting question:', error);
+    alert('❌ Error deleting question: ' + error.message);
+  }
+}
+
+// Handle add question form
+document.getElementById('addQuestionForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const formData = {
+    level: document.getElementById('questionLevel').value,
+    category: document.getElementById('questionCategory').value,
+    question_text: document.getElementById('questionText').value,
+    options: [
+      document.getElementById('optionA').value,
+      document.getElementById('optionB').value,
+      document.getElementById('optionC').value,
+      document.getElementById('optionD').value
+    ],
+    correct_answer: parseInt(document.getElementById('correctAnswer').value),
+    explanation: document.getElementById('questionExplanation').value
+  };
+
+  try {
+    const response = await fetch('/api/admin/quiz-questions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
+
+    if (response.ok) {
+      alert('✅ Question added successfully!');
+      e.target.reset();
+      loadQuizQuestions();
+      loadQuizStats();
+    } else {
+      const error = await response.json();
+      alert('❌ Error: ' + (error.message || 'Failed to add question'));
+    }
+  } catch (error) {
+    console.error('Error adding question:', error);
+    alert('❌ Error adding question: ' + error.message);
+  }
+});
+
+// Initialize quiz tab when shown
+function initializeQuizTab() {
+  loadQuizStats();
+  loadQuizQuestions();
+}
 
   </script>
 <div id="bulkRescheduleModal" class="modal">

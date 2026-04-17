@@ -835,6 +835,7 @@
         <button class="tab-btn" onclick="showTab('makeup', event)">🎁 Makeup</button>
         <button class="tab-btn" onclick="showTab('assessments', event)">📊 Report Cards</button>
         <button class="tab-btn" id="tabBtnChallenges" onclick="showTab('challenges', event)">🎯 Challenges<span class="red-dot" id="dotChallenges"></span></button>
+        <button class="tab-btn" id="tabBtnQuiz" onclick="showTab('quiz', event)">🧠 Daily Quiz<span class="red-dot" id="dotQuiz"></span></button>
         <button class="tab-btn" id="tabBtnResources" onclick="showTab('resources', event)">📚 Resources<span class="red-dot" id="dotResources"></span></button>
         <button class="tab-btn" onclick="showTab('pointsTracker', event)">⭐ Points Tracker</button>
         <button class="tab-btn" id="tabBtnAchievements" onclick="showTab('achievements', event)">🏆 Achievements<span class="red-dot" id="dotAchievements"></span></button>
@@ -1124,6 +1125,83 @@
           </div>
           <div id="studentChallenges" style="display: grid; gap: 12px;">
             <p style="text-align: center; color: #718096; padding: 20px;">Loading challenges...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily Quiz Tab -->
+      <div id="quizTab" class="tab-content">
+        <div class="section">
+          <h2 style="color: #B05D9E; margin-bottom: 15px;">🧠 Daily English Quiz</h2>
+          <p style="color: #718096; margin-bottom: 20px;">Test your English skills daily! Answer questions correctly to earn points and climb the leaderboard.</p>
+
+          <!-- Quiz Status -->
+          <div id="quizStatus" style="background: linear-gradient(135deg, #e6fffa 0%, #b2f5ea 100%); border: 2px solid #38b2ac; border-radius: 12px; padding: 20px; margin-bottom: 25px; display: none;">
+            <h3 style="color: #2d3748; margin-bottom: 10px;">🎉 Quiz Completed!</h3>
+            <p id="quizResult" style="color: #4a5568; margin-bottom: 15px;"></p>
+            <div style="display: flex; gap: 10px;">
+              <button onclick="viewQuizHistory()" class="btn" style="background: #38b2ac; color: white;">📊 View History</button>
+              <button onclick="shareQuizResult()" class="btn" style="background: #4a5568; color: white;">📤 Share Result</button>
+            </div>
+          </div>
+
+          <!-- Quiz in Progress -->
+          <div id="quizContainer" style="display: none;">
+            <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div>
+                  <h3 id="quizQuestionNumber" style="color: #2d3748; margin: 0;">Question 1 of 10</h3>
+                  <p id="quizTimer" style="color: #718096; margin: 5px 0 0; font-size: 0.9rem;">⏱️ 2:00 remaining</p>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 1.2rem; font-weight: bold; color: #38a169;">Score: <span id="currentScore">0</span>/10</div>
+                  <div style="font-size: 0.8rem; color: #718096;">Points earned: <span id="pointsEarned">0</span></div>
+                </div>
+              </div>
+
+              <div id="questionContent" style="margin-bottom: 25px;">
+                <h4 id="questionText" style="color: #2d3748; margin-bottom: 20px; line-height: 1.4;"></h4>
+                <div id="optionsContainer" style="display: grid; gap: 12px;">
+                  <!-- Options will be populated here -->
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <button id="prevBtn" onclick="previousQuestion()" class="btn" style="background: #e2e8f0; color: #4a5568; display: none;">⬅️ Previous</button>
+                <div style="flex: 1;"></div>
+                <button id="nextBtn" onclick="nextQuestion()" class="btn" style="background: #3182ce; color: white;">Next ➡️</button>
+                <button id="submitBtn" onclick="submitQuiz()" class="btn" style="background: #38a169; color: white; display: none;">🎯 Submit Quiz</button>
+              </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span style="font-weight: bold; color: #2d3748;">Progress</span>
+                <span id="progressText" style="color: #718096;">1 / 10</span>
+              </div>
+              <div style="background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden;">
+                <div id="progressBar" style="background: linear-gradient(90deg, #38a169 0%, #3182ce 100%); height: 100%; width: 10%; transition: width 0.3s ease;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Start Quiz Button -->
+          <div id="startQuizContainer" style="text-align: center; padding: 40px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 16px; box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);">
+              <h3 style="margin-bottom: 15px;">🚀 Ready for Today's Quiz?</h3>
+              <p style="margin-bottom: 25px; opacity: 0.9;">10 questions • Multiple choice • Earn points for correct answers</p>
+              <button id="startQuizBtn" onclick="startQuiz()" class="btn" style="background: white; color: #667eea; font-size: 1.1rem; padding: 12px 30px; font-weight: bold;">🎯 Start Quiz</button>
+              <p id="quizCooldown" style="margin-top: 15px; font-size: 0.9rem; opacity: 0.8; display: none;"></p>
+            </div>
+          </div>
+
+          <!-- Quiz History -->
+          <div id="quizHistoryContainer" style="display: none; margin-top: 30px;">
+            <h3 style="color: #2d3748; margin-bottom: 15px;">📊 Your Quiz History</h3>
+            <div id="quizHistory" style="display: grid; gap: 12px;">
+              <p style="text-align: center; color: #718096; padding: 20px;">Loading history...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -3555,12 +3633,12 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
           const hwSubs = Array.isArray(s.hw_submissions) ? s.hw_submissions : [];
           if (canSubmitHw) {
             const existingNames = hwSubs.map(f => f.file_name || '').filter(Boolean);
-            const existingNamesJson = JSON.stringify(existingNames).replace(/"/g, '&quot;');
             if (hwSubs.length > 0) {
               materials += `<button onclick="openHwSubmitModal(${s.id}, '${getSerial(s)}', true, ${JSON.stringify(existingNames)})" style="cursor:pointer; border:none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; margin: 2px;">🔄 Resubmit HW</button>`;
             } else {
               materials += `<button onclick="openHwSubmitModal(${s.id}, '${getSerial(s)}', false, [])" style="cursor:pointer; border:none; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color:white; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; margin: 2px;">📤 Submit HW</button>`;
             }
+            materials += `<button onclick="openHwSubmitModal(${s.id}, '${getSerial(s)}', ${hwSubs.length > 0}, ${JSON.stringify(existingNames)}, 'comment')" style="cursor:pointer; border:none; background: linear-gradient(135deg, #38b2ac 0%, #319795 100%); color:white; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; margin: 2px;">ðŸ’¬ Add Comment/Link</button>`;
           }
           if (!materials) materials = '-';
 
@@ -3598,6 +3676,9 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
               if (sub.feedback_grade) hwStatus += `<br><span style="background:#38a169; color:white; padding:2px 8px; border-radius:4px; font-size:0.8rem;">${sub.feedback_grade}</span>`;
               if (sub.feedback_comments) hwStatus += `<br><small style="color:#4a5568; font-style:italic;">💬 ${sub.feedback_comments}</small>`;
               if (checkedOn) hwStatus += `<br><small style="color:#718096;">✔️ Checked: ${checkedOn}</small>`;
+              if (sub.file_name) hwStatus += `<br><small style="color:#4a5568;">File: ${sub.file_name}</small>`;
+              if (sub.submission_comment) hwStatus += `<br><small style="color:#2d3748; font-style:italic;">Comment: ${sub.submission_comment}</small>`;
+              if (sub.submission_link) hwStatus += `<br><a href="${sub.submission_link}" target="_blank" style="color:#3182ce; font-size:0.82rem; word-break:break-all;">Link: ${sub.submission_link}</a>`;
               if (sub.corrected_file_path) {
                 const corrPath = sub.corrected_file_path.replace(/'/g, "\\'");
                 hwStatus += `<br><button onclick="previewFile('${corrPath}', 'image', 'Teacher Corrections')" style="margin-top:4px; background:#e53e3e; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.78rem;">📝 View Corrections</button>`;
@@ -3665,7 +3746,7 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
         }).join('');
     }
 
-    function openHwSubmitModal(sessionId, sessionSerial, isResubmit, existingFiles) {
+    function openHwSubmitModal(sessionId, sessionSerial, isResubmit, existingFiles, preferredMode = 'file') {
       existingFiles = Array.isArray(existingFiles) ? existingFiles : [];
       const existing = document.getElementById('hwSubmitModal');
       if (existing) existing.remove();
@@ -3699,11 +3780,20 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
             🎯 <strong>Tip:</strong> Select multiple files at once! Uploading many files still earns <strong>10 points</strong> on the leaderboard.
           </div>
           <div style="margin-bottom:18px;">
-            <label style="display:block;font-weight:600;color:#4a5568;margin-bottom:8px;">Select Files *</label>
+            <label style="display:block;font-weight:600;color:#4a5568;margin-bottom:8px;">Select Files</label>
             <input type="file" id="hwSubmitFileInput" multiple
               accept="image/*,video/mp4,video/quicktime,video/x-msvideo,video/webm,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.mp4,.mov,.avi,.webm"
               style="width:100%;padding:10px;border:2px dashed #B05D9E;border-radius:8px;font-size:0.9rem;background:#fdf0f8;cursor:pointer;">
             <div id="hwSubmitFileList" style="margin-top:8px;font-size:0.83rem;color:#4a5568;max-height:120px;overflow-y:auto;"></div>
+          </div>
+          <div style="margin-bottom:14px;">
+            <label style="display:block;font-weight:600;color:#4a5568;margin-bottom:8px;">Comment</label>
+            <textarea id="hwSubmitCommentInput" rows="4" placeholder="Write a note, add context, or explain the homework here..." style="width:100%;padding:10px;border:1px solid #cbd5e0;border-radius:8px;font-size:0.9rem;resize:vertical;box-sizing:border-box;"></textarea>
+          </div>
+          <div style="margin-bottom:18px;">
+            <label style="display:block;font-weight:600;color:#4a5568;margin-bottom:8px;">Link</label>
+            <input type="url" id="hwSubmitLinkInput" placeholder="https://example.com/homework" style="width:100%;padding:10px;border:1px solid #cbd5e0;border-radius:8px;font-size:0.9rem;box-sizing:border-box;">
+            <small style="display:block;color:#718096;margin-top:6px;">You can submit files, a comment, a link, or any combination. Comment-only submissions still earn homework points.</small>
           </div>
           <div id="hwSubmitProgress" style="display:none;margin-bottom:14px;">
             <div style="background:#e2e8f0;border-radius:4px;height:10px;overflow:hidden;">
@@ -3730,6 +3820,13 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
         }
       });
 
+      if (preferredMode === 'comment') {
+        setTimeout(() => {
+          const commentInput = modal.querySelector('#hwSubmitCommentInput');
+          if (commentInput) commentInput.focus();
+        }, 0);
+      }
+
       modal._existingFiles = existingFiles;
       modal.addEventListener('click', (e) => { if (e.target === modal) closeHwSubmitModal(); });
       document.addEventListener('keydown', function escHw(e) {
@@ -3747,8 +3844,10 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
     async function submitHwFiles(sessionId) {
       if (_hwUploading) return; // prevent double-fire
       const input = document.getElementById('hwSubmitFileInput');
-      if (!input || input.files.length === 0) {
-        alert('Please select at least one file to upload.');
+      const comment = (document.getElementById('hwSubmitCommentInput')?.value || '').trim();
+      const link = (document.getElementById('hwSubmitLinkInput')?.value || '').trim();
+      if (!input || (input.files.length === 0 && !comment && !link)) {
+        alert('Please upload a file, write a comment, or add a link.');
         return;
       }
 
@@ -3759,7 +3858,7 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
       const skippedFiles = allFiles.filter(f => existingFiles.includes(f.name.toLowerCase()));
       const files = allFiles.filter(f => !existingFiles.includes(f.name.toLowerCase()));
 
-      if (files.length === 0) {
+      if (input.files.length > 0 && files.length === 0 && !comment && !link) {
         alert('⚠️ All selected files have already been submitted for this session.\n\nPlease choose different files to add new homework.');
         return;
       }
@@ -3780,6 +3879,26 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
       progress.style.display = 'block';
 
       let successCount = 0, errorCount = 0, dupCount = 0;
+      if (files.length === 0 && (comment || link)) {
+        progressBar.style.width = '35%';
+        progressText.textContent = 'Submitting comment/link...';
+        const fd = new FormData();
+        fd.append('sessionId', sessionId);
+        fd.append('uploadType', 'homework');
+        if (comment) fd.append('comment', comment);
+        if (link) fd.append('link', link);
+        try {
+          const res = await fetch(`/api/upload/homework/${currentStudent.id}`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: fd
+          });
+          if (res.ok) successCount++;
+          else errorCount++;
+        } catch (err) {
+          errorCount++;
+        }
+      }
       for (let i = 0; i < files.length; i++) {
         progressBar.style.width = Math.round((i / files.length) * 100) + '%';
         progressText.textContent = `Uploading ${i + 1} of ${files.length}: ${files[i].name}`;
@@ -3787,6 +3906,10 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
         fd.append('file', files[i]);
         fd.append('sessionId', sessionId);
         fd.append('uploadType', 'homework');
+        if (i === 0) {
+          if (comment) fd.append('comment', comment);
+          if (link) fd.append('link', link);
+        }
         try {
           const res = await fetch(`/api/upload/homework/${currentStudent.id}`, {
             method: 'POST',
@@ -3808,10 +3931,12 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
 
       const skipMsg = (skippedFiles.length + dupCount) > 0 ? ` (${skippedFiles.length + dupCount} duplicate(s) skipped)` : '';
       if (successCount > 0) {
+        const summaryText = files.length > 0 ? `${successCount} new file(s) uploaded` : 'Comment/link submitted';
         progressText.textContent = `✅ ${successCount} new file(s) uploaded!${skipMsg}${errorCount > 0 ? ` (${errorCount} failed)` : ''}`;
         setTimeout(() => {
           closeHwSubmitModal();
           loadPast();
+          loadSubmittedHomework();
           loadBadges();
           loadScoreHistory();
         }, 1800);
@@ -3875,6 +4000,14 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
 
           const feedbackDisplay = hw.feedback_comments
             ? `<p style="color: #4a5568; font-size: 0.9rem; margin-top: 8px; padding: 10px; background: #f0fff4; border-radius: 6px;"><strong>Teacher's Feedback:</strong> ${hw.feedback_comments}</p>`
+            : '';
+
+          const commentDisplay = hw.submission_comment
+            ? `<p style="color:#2d3748; font-size:0.9rem; margin-top:8px; padding:10px; background:#fffaf0; border-radius:6px;"><strong>Comment:</strong> ${hw.submission_comment}</p>`
+            : '';
+
+          const linkDisplay = hw.submission_link
+            ? `<p style="margin-top:8px;"><a href="${hw.submission_link}" target="_blank" style="color:#3182ce; font-size:0.9rem; word-break:break-all;">Open submitted link</a></p>`
             : '';
 
           // Build proper file URL for viewing
@@ -3946,6 +4079,8 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
                   <button onclick="deleteHomework(${hw.id})" style="background: #e53e3e; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Delete</button>
                 </div>
               </div>
+              ${commentDisplay}
+              ${linkDisplay}
               ${feedbackDisplay}
             </div>
           `;
@@ -5294,6 +5429,319 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
         location.reload();
       }
     }
+
+    // ==================== QUIZ FUNCTIONS ====================
+
+    let currentQuiz = null;
+    let currentQuestionIndex = 0;
+    let quizAnswers = [];
+    let quizStartTime = null;
+    let questionTimer = null;
+    let timeRemaining = 120; // 2 minutes per question
+
+    // Initialize quiz when tab is shown
+    function initializeQuizTab() {
+      checkQuizStatus();
+      loadQuizHistory();
+    }
+
+    // Check if student can take today's quiz
+    async function checkQuizStatus() {
+      try {
+        const response = await fetch('/api/daily-quiz/status');
+        const status = await response.json();
+
+        const startContainer = document.getElementById('startQuizContainer');
+        const quizContainer = document.getElementById('quizContainer');
+        const statusDiv = document.getElementById('quizStatus');
+        const cooldownDiv = document.getElementById('quizCooldown');
+
+        if (status.canTakeQuiz) {
+          startContainer.style.display = 'block';
+          quizContainer.style.display = 'none';
+          statusDiv.style.display = 'none';
+          cooldownDiv.style.display = 'none';
+        } else if (status.lastAttempt) {
+          // Show completed status
+          startContainer.style.display = 'none';
+          quizContainer.style.display = 'none';
+          statusDiv.style.display = 'block';
+          cooldownDiv.style.display = 'none';
+
+          const score = status.lastAttempt.score;
+          const maxScore = status.lastAttempt.total_questions;
+          const percentage = Math.round((score / maxScore) * 100);
+
+          document.getElementById('quizResult').innerHTML = `
+            You scored <strong>${score}/${maxScore}</strong> (${percentage}%) today!<br>
+            Points earned: <strong>${status.lastAttempt.points_earned}</strong> ⭐
+          `;
+        } else {
+          // Show cooldown message
+          startContainer.style.display = 'block';
+          quizContainer.style.display = 'none';
+          statusDiv.style.display = 'none';
+          cooldownDiv.style.display = 'block';
+
+          const nextQuizTime = new Date(status.nextQuizTime);
+          const timeUntil = nextQuizTime - new Date();
+          const hours = Math.floor(timeUntil / (1000 * 60 * 60));
+          const minutes = Math.floor((timeUntil % (1000 * 60 * 60)) / (1000 * 60));
+
+          cooldownDiv.innerHTML = `⏰ Next quiz available in ${hours}h ${minutes}m`;
+        }
+      } catch (error) {
+        console.error('Error checking quiz status:', error);
+      }
+    }
+
+    // Start the daily quiz
+    async function startQuiz() {
+      try {
+        const response = await fetch('/api/daily-quiz/start', {
+          method: 'POST'
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          alert('❌ ' + (error.message || 'Failed to start quiz'));
+          return;
+        }
+
+        currentQuiz = await response.json();
+        currentQuestionIndex = 0;
+        quizAnswers = [];
+        quizStartTime = Date.now();
+
+        document.getElementById('startQuizContainer').style.display = 'none';
+        document.getElementById('quizContainer').style.display = 'block';
+        document.getElementById('quizStatus').style.display = 'none';
+
+        showQuestion(0);
+        startQuestionTimer();
+      } catch (error) {
+        console.error('Error starting quiz:', error);
+        alert('❌ Error starting quiz: ' + error.message);
+      }
+    }
+
+    // Show a specific question
+    function showQuestion(index) {
+      const question = currentQuiz.questions[index];
+      currentQuestionIndex = index;
+
+      document.getElementById('quizQuestionNumber').textContent = `Question ${index + 1} of ${currentQuiz.questions.length}`;
+      document.getElementById('questionText').innerHTML = question.question_text;
+      document.getElementById('progressText').textContent = `${index + 1} / ${currentQuiz.questions.length}`;
+      document.getElementById('progressBar').style.width = `${((index + 1) / currentQuiz.questions.length) * 100}%`;
+
+      // Update navigation buttons
+      document.getElementById('prevBtn').style.display = index > 0 ? 'block' : 'none';
+      document.getElementById('nextBtn').style.display = index < currentQuiz.questions.length - 1 ? 'block' : 'none';
+      document.getElementById('submitBtn').style.display = index === currentQuiz.questions.length - 1 ? 'block' : 'none';
+
+      // Show options
+      const optionsContainer = document.getElementById('optionsContainer');
+      optionsContainer.innerHTML = question.options.map((option, optIndex) => {
+        const isSelected = quizAnswers[index] === optIndex;
+        return `
+          <button onclick="selectAnswer(${optIndex})"
+                  class="quiz-option ${isSelected ? 'selected' : ''}"
+                  style="width: 100%; padding: 15px; border: 2px solid ${isSelected ? '#38a169' : '#e2e8f0'}; border-radius: 8px; background: ${isSelected ? '#f0fff4' : 'white'}; text-align: left; cursor: pointer; transition: all 0.2s; font-size: 1rem;">
+            <span style="font-weight: bold; color: #38a169;">${String.fromCharCode(65 + optIndex)})</span> ${option}
+          </button>
+        `;
+      }).join('');
+
+      updateScore();
+    }
+
+    // Select an answer
+    function selectAnswer(optionIndex) {
+      quizAnswers[currentQuestionIndex] = optionIndex;
+      showQuestion(currentQuestionIndex);
+    }
+
+    // Navigate to next question
+    function nextQuestion() {
+      if (currentQuestionIndex < currentQuiz.questions.length - 1) {
+        showQuestion(currentQuestionIndex + 1);
+        resetQuestionTimer();
+      }
+    }
+
+    // Navigate to previous question
+    function previousQuestion() {
+      if (currentQuestionIndex > 0) {
+        showQuestion(currentQuestionIndex - 1);
+        resetQuestionTimer();
+      }
+    }
+
+    // Update score display
+    function updateScore() {
+      let correct = 0;
+      quizAnswers.forEach((answer, index) => {
+        if (answer === currentQuiz.questions[index].correct_answer) {
+          correct++;
+        }
+      });
+
+      document.getElementById('currentScore').textContent = correct;
+      document.getElementById('pointsEarned').textContent = correct; // 1 point per correct answer
+    }
+
+    // Timer functions
+    function startQuestionTimer() {
+      timeRemaining = 120;
+      updateTimerDisplay();
+
+      questionTimer = setInterval(() => {
+        timeRemaining--;
+        updateTimerDisplay();
+
+        if (timeRemaining <= 0) {
+          clearInterval(questionTimer);
+          // Auto-advance or handle timeout
+          if (currentQuestionIndex < currentQuiz.questions.length - 1) {
+            nextQuestion();
+          } else {
+            submitQuiz();
+          }
+        }
+      }, 1000);
+    }
+
+    function resetQuestionTimer() {
+      clearInterval(questionTimer);
+      startQuestionTimer();
+    }
+
+    function updateTimerDisplay() {
+      const minutes = Math.floor(timeRemaining / 60);
+      const seconds = timeRemaining % 60;
+      document.getElementById('quizTimer').textContent = `⏱️ ${minutes}:${seconds.toString().padStart(2, '0')} remaining`;
+
+      if (timeRemaining < 30) {
+        document.getElementById('quizTimer').style.color = '#e53e3e';
+      } else {
+        document.getElementById('quizTimer').style.color = '#718096';
+      }
+    }
+
+    // Submit the completed quiz
+    async function submitQuiz() {
+      clearInterval(questionTimer);
+
+      try {
+        const response = await fetch('/api/daily-quiz/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            answers: quizAnswers,
+            timeSpent: Math.floor((Date.now() - quizStartTime) / 1000)
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          showQuizResult(result);
+        } else {
+          const error = await response.json();
+          alert('❌ ' + (error.message || 'Failed to submit quiz'));
+        }
+      } catch (error) {
+        console.error('Error submitting quiz:', error);
+        alert('❌ Error submitting quiz: ' + error.message);
+      }
+    }
+
+    // Show quiz result
+    function showQuizResult(result) {
+      document.getElementById('quizContainer').style.display = 'none';
+      document.getElementById('quizStatus').style.display = 'block';
+
+      const percentage = Math.round((result.score / result.total_questions) * 100);
+      document.getElementById('quizResult').innerHTML = `
+        You scored <strong>${result.score}/${result.total_questions}</strong> (${percentage}%)!<br>
+        Points earned: <strong>${result.points_earned}</strong> ⭐<br>
+        Time taken: <strong>${Math.floor(result.time_spent / 60)}:${(result.time_spent % 60).toString().padStart(2, '0')}</strong>
+      `;
+
+      // Refresh quiz status and history
+      checkQuizStatus();
+      loadQuizHistory();
+    }
+
+    // Load quiz history
+    async function loadQuizHistory() {
+      try {
+        const response = await fetch('/api/daily-quiz/history');
+        const history = await response.json();
+
+        const container = document.getElementById('quizHistory');
+        if (history.length === 0) {
+          container.innerHTML = '<p style="text-align: center; color: #718096; padding: 20px;">No quiz attempts yet. Take your first quiz today!</p>';
+          return;
+        }
+
+        container.innerHTML = history.map(attempt => {
+          const date = new Date(attempt.created_at).toLocaleDateString();
+          const percentage = Math.round((attempt.score / attempt.total_questions) * 100);
+          const timeSpent = Math.floor(attempt.time_spent / 60) + ':' + (attempt.time_spent % 60).toString().padStart(2, '0');
+
+          return `
+            <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <strong>${date}</strong> - Score: ${attempt.score}/${attempt.total_questions} (${percentage}%)
+                </div>
+                <div style="text-align: right;">
+                  <div style="color: #38a169; font-weight: bold;">+${attempt.points_earned} points</div>
+                  <div style="color: #718096; font-size: 0.8rem;">${timeSpent} time</div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('Error loading quiz history:', error);
+        document.getElementById('quizHistory').innerHTML = '<p style="color: #e53e3e; text-align: center; padding: 20px;">Error loading history</p>';
+      }
+    }
+
+    // View quiz history
+    function viewQuizHistory() {
+      document.getElementById('quizHistoryContainer').style.display = 'block';
+      document.getElementById('quizHistoryContainer').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Share quiz result (placeholder)
+    function shareQuizResult() {
+      const resultText = document.getElementById('quizResult').textContent;
+      if (navigator.share) {
+        navigator.share({
+          title: 'My Daily English Quiz Result',
+          text: `I just completed today's English quiz! ${resultText}`,
+          url: window.location.href
+        });
+      } else {
+        // Fallback: copy to clipboard
+        navigator.clipboard.writeText(`I just completed today's English quiz! ${resultText}`).then(() => {
+          alert('✅ Result copied to clipboard!');
+        });
+      }
+    }
+
+    // Add quiz tab initialization to tab switching
+    const originalShowTab = window.showTab;
+    window.showTab = function(name, e) {
+      originalShowTab(name, e);
+      if (name === 'quiz') {
+        setTimeout(initializeQuizTab, 100);
+      }
+    };
+
   </script>
 
   <!-- Footer -->
