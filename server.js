@@ -2645,7 +2645,7 @@ async function runMigrations() {
         CREATE TABLE IF NOT EXISTS quiz_questions (
           id SERIAL PRIMARY KEY,
           level VARCHAR(20) NOT NULL CHECK (level IN ('beginner', 'intermediate', 'advanced')),
-          category VARCHAR(30) NOT NULL CHECK (category IN ('grammar', 'vocabulary', 'listening', 'reading', 'pronunciation', 'phonics')),
+          category VARCHAR(30) NOT NULL CHECK (category IN ('grammar', 'vocabulary', 'pronunciation', 'idioms', 'proverbs', 'elaboration', 'imagery')),
           question_text TEXT NOT NULL,
           options JSONB NOT NULL,
           correct_answer INTEGER NOT NULL CHECK (correct_answer >= 0 AND correct_answer <= 3),
@@ -2711,10 +2711,27 @@ async function runMigrations() {
         ['beginner', 'vocabulary', 'A large body of water surrounded by land is called a:', '["River", "Lake", "Ocean", "Mountain"]', 1, 'Lake is inland water body'],
         ['beginner', 'vocabulary', 'What do you call a baby dog?', '["Kitten", "Puppy", "Calf", "Foal"]', 1, 'Puppy is a young dog'],
 
-        // Beginner Phonics
-        ['beginner', 'phonics', 'Which word starts with /b/ sound?', '["cat", "ball", "dog", "fish"]', 1, 'Ball begins with the /b/ sound'],
-        ['beginner', 'phonics', 'Which word starts with /m/ sound?', '["sun", "moon", "tree", "bird"]', 1, 'Moon begins with the /m/ sound'],
-        ['beginner', 'phonics', 'Which word starts with /s/ sound?', '["pen", "sun", "moon", "tree"]', 1, 'Sun begins with the /s/ sound'],
+        // Beginner Idioms
+        ['beginner', 'idioms', 'If someone says "break a leg", what do they mean?', '["Be careful", "Good luck", "Run fast", "Stay silent"]', 1, 'Break a leg means good luck'],
+        ['beginner', 'idioms', '"Piece of cake" means something is:', '["Tasty", "Easy", "Hard", "Small"]', 1, 'Piece of cake means easy'],
+        ['beginner', 'proverbs', 'A stitch in time saves:', '["money", "time", "effort", "trouble"]', 3, 'A stitch in time saves trouble'],
+        ['beginner', 'proverbs', '"Two heads are better than ...":', '["one", "few", "many", "three"]', 0, 'Two heads are better than one'],
+        ['beginner', 'elaboration', 'Which sentence gives more detail?', '["The bird flew.", "The bird soared above the trees, its wings cutting the cool air."]', 1, 'Elaboration adds more descriptive detail'],
+        ['beginner', 'imagery', 'Which description creates a picture in your mind?', '["The sun was hot.", "The sun poured golden light across the field, making the flowers glow."]', 1, 'Imagery uses vivid description to help readers see the scene'],
+
+        // Intermediate Idioms
+        ['intermediate', 'idioms', 'What does "hit the books" mean?', '["Study hard", "Do homework", "Close a book", "Go to the library"]', 0, 'Hit the books means to study hard'],
+        ['intermediate', 'proverbs', '"Better late than ..." means:', '["never", "early", "late", "soon"]', 2, 'Better late than never means it is better to do something late than not at all'],
+        ['intermediate', 'elaboration', 'Which sentence elaborates a simple idea?', '["He was excited.", "His heart raced and his eyes sparkled as he opened the letter."]', 1, 'Elaboration adds detail to create interest'],
+        ['intermediate', 'imagery', 'Which phrase uses imagery?', '["The river flowed.", "The river wound like a silver ribbon through the valley."]', 1, 'Imagery paints a picture using descriptive language'],
+        ['intermediate', 'proverbs', 'What does "actions speak louder than words" mean?', '["Talking is better", "Doing is more important", "Listening is key", "Writing is stronger"]', 1, 'Actions speak louder than words means what you do is more important than what you say'],
+
+        // Advanced Idioms / Proverbs / Elaboration / Imagery
+        ['advanced', 'idioms', 'If someone says "spill the beans", they want you to:', '["Cook dinner", "Tell a secret", "Clean up", "Plant beans"]', 1, 'Spill the beans means reveal a secret'],
+        ['advanced', 'proverbs', '"A watched pot never boils" means:', '["Being impatient makes time feel slow", "The pot stays cold", "Boiling is faster", "Watching helps"]', 0, 'The proverb means waiting makes time feel longer'],
+        ['advanced', 'elaboration', 'Which sentence is most elaborated?', '["She was nervous.", "She pressed her palms together, took a deep breath, and felt her stomach flutter with nervous energy."]', 1, 'Elaboration adds texture and detail to the narrative'],
+        ['advanced', 'imagery', 'Choose the sentence with the strongest imagery.', '["The garden was nice.", "The garden shimmered with dew, roses blushing under the morning sun."]', 1, 'Imagery uses language that appeals to the senses'],
+        ['advanced', 'proverbs', '"The pen is mightier than the sword" means:', '["Writing is smarter than fighting", "Pens are heavy", "Swords are dangerous", "Books are weapons"]', 0, 'This proverb means words and ideas can have more power than force'],
 
         // Intermediate Grammar
         ['intermediate', 'grammar', 'If I ___ rich, I would travel the world.', '["am", "was", "were", "be"]', 2, 'Second conditional for hypothetical situations'],
@@ -2726,9 +2743,9 @@ async function runMigrations() {
         ['intermediate', 'vocabulary', 'A person who studies rocks is called a:', '["Geologist", "Biologist", "Chemist", "Physicist"]', 0, 'Geologist studies rocks and earth materials'],
         ['intermediate', 'vocabulary', 'What is the opposite of "generous"?', '["Kind", "Stingy", "Friendly", "Honest"]', 1, 'Stingy means not generous'],
 
-        // Intermediate Reading
-        ['intermediate', 'reading', 'What type of word is "quickly"?', '["Noun", "Verb", "Adjective", "Adverb"]', 3, 'Quickly describes how an action is done'],
-        ['intermediate', 'reading', 'In the sentence "The cat sat on the mat", "mat" is a:', '["Subject", "Verb", "Object", "Preposition"]', 2, 'Mat is the object of the preposition "on"'],
+        // Intermediate Elaboration & Imagery
+        ['intermediate', 'elaboration', 'Which sentence explains the idea more clearly?', '["The dog barked.", "The dog barked loudly at the stranger by the gate."]', 1, 'Elaboration adds clarity and detail'],
+        ['intermediate', 'imagery', 'Which sentence creates a striking image?', '["The forest was quiet.", "The forest hung heavy with mist and the trees whispered secrets."]', 1, 'Imagery makes scenes vivid'],
 
         // Advanced Grammar
         ['advanced', 'grammar', 'Had I known about the party, I ___ .', '["would come", "would have come", "came", "come"]', 1, 'Third conditional for past hypothetical'],
@@ -2740,19 +2757,22 @@ async function runMigrations() {
         ['advanced', 'vocabulary', 'A "plethora" means:', '["Shortage", "Abundance", "Quality", "Speed"]', 1, 'Plethora means a large amount'],
         ['advanced', 'vocabulary', 'What is a "quintessential" example?', '["Perfect", "Typical", "Strange", "Modern"]', 0, 'Quintessential means perfect example of a type'],
 
-        // Advanced Reading
-        ['advanced', 'reading', 'What figure of speech is "time flies"?', '["Metaphor", "Simile", "Personification", "Hyperbole"]', 0, 'Time flies is a metaphor'],
-        ['advanced', 'reading', 'In poetry, "iambic pentameter" refers to:', '["Rhyme scheme", "Meter", "Stanza length", "Poem type"]', 1, 'Iambic pentameter is a metrical pattern'],
+        // Advanced Elaborations & Imagery
+        ['advanced', 'elaboration', 'Which sentence is the best elaboration?', '["The room smelled bad.", "The room smelled of stale bread, damp wood, and old paper."]', 1, 'Elaboration adds rich sensory detail'],
+        ['advanced', 'imagery', 'Choose the sentence with the strongest imagery.', '["The sky was blue.", "The sky was a sapphire bowl dotted with a million sparkling stars."]', 1, 'Imagery enhances writing with vivid sensory language'],
+        ['advanced', 'idioms', 'What does "jump on the bandwagon" mean?', '["Start a fight", "Follow a trend", "Build a wagon", "Avoid trouble"]', 1, 'Jump on the bandwagon means join others in doing something popular'],
+        ['advanced', 'proverbs', '"You can lead a horse to water, but ..."', '["you cannot make it swim", "you cannot make it drink", "you can make it stand", "you can make it jump"]', 1, 'This proverb means you can offer help but not force someone'],
 
         // Pronunciation
         ['beginner', 'pronunciation', 'How do you pronounce "th" in "think"?', '["Like t", "Like z", "Like s", "Like f"]', 0, 'Voiceless "th" sound'],
         ['intermediate', 'pronunciation', 'Which word has the same vowel sound as "boat"?', '["Cat", "Cow", "Car", "Cut"]', 1, 'Cow has the /ou/ diphthong'],
         ['advanced', 'pronunciation', 'How is "colonel" typically pronounced?', '["KER-nel", "kol-o-NEL", "KUH-nel", "kol-NEL"]', 1, 'Colonel is pronounced kol-o-NEL'],
 
-        // Listening (text-based for now)
-        ['beginner', 'listening', 'If someone says "I\'m famished", they mean:', '["Tired", "Hungry", "Cold", "Happy"]', 1, 'Famished means very hungry'],
-        ['intermediate', 'listening', 'What does "break a leg" mean?', '["Good luck", "Be careful", "Hurry up", "Stop talking"]', 0, '"Break a leg" means good luck'],
-        ['advanced', 'listening', 'What does "barking up the wrong tree" mean?', '["Wrong direction", "Wrong person", "Wrong time", "Wrong place"]', 1, 'Means pursuing the wrong person or course']
+        // Advanced Usage
+        ['advanced', 'idioms', 'If someone says "spill the beans", they want you to:', '["Cook dinner", "Tell a secret", "Clean up", "Plant beans"]', 1, 'Spill the beans means reveal a secret'],
+        ['advanced', 'proverbs', '"A watched pot never boils" means:', '["Being impatient makes time feel slow", "The pot stays cold", "Boiling is faster", "Watching helps"]', 0, 'The proverb means waiting makes time feel longer'],
+        ['advanced', 'imagery', 'Choose the sentence with the strongest imagery.', '["The sky was blue.", "The sky was a sapphire bowl dotted with a million sparkling stars."]', 1, 'Imagery enhances writing with vivid sensory language'],
+        ['advanced', 'elaboration', 'Which sentence is the most elaborated?', '["She was nervous.", "She pressed her palms together, took a deep breath, and felt her stomach flutter with nervous energy."]', 1, 'Elaboration adds rich sensory detail']
       ];
 
       for (const [level, category, question, options, correct_answer, explanation] of sampleQuestions) {
@@ -2824,6 +2844,25 @@ async function runMigrations() {
       console.log('✅ Migration 48: Ensured push token tables and indexes');
     } catch (err) {
       console.log('Migration 48 note:', err.message);
+    }
+
+    // Migration 49: Update quiz question category constraint and remove legacy phonics category from future inserts
+    try {
+      await client.query(`ALTER TABLE quiz_questions DROP CONSTRAINT IF EXISTS quiz_questions_category_check`);
+      await client.query(`ALTER TABLE quiz_questions ADD CONSTRAINT quiz_questions_category_check CHECK (category IN ('grammar', 'vocabulary', 'pronunciation', 'idioms', 'proverbs', 'elaboration', 'imagery'))`);
+      console.log('✅ Migration 49: Updated quiz questions category constraint');
+    } catch (err) {
+      console.log('Migration 49 note:', err.message);
+    }
+
+    // Migration 50: Remove any legacy phonics quiz questions
+    try {
+      const cleanupResult = await client.query(`DELETE FROM quiz_questions WHERE LOWER(category) = 'phonics'`);
+      if ((cleanupResult.rowCount || 0) > 0) {
+        console.log(`✅ Migration 50: Removed ${cleanupResult.rowCount} legacy phonics quiz question(s)`);
+      }
+    } catch (err) {
+      console.log('Migration 50 note:', err.message);
     }
 
     console.log('✅ All database migrations completed successfully!');
@@ -6560,9 +6599,9 @@ async function generateDailyQuiz() {
   const quizData = { quiz_date: today };
 
   for (const level of levels) {
-    // Get 10 random questions for this level (2 from each category)
-    const categories = ['grammar', 'vocabulary', 'listening', 'reading', 'pronunciation', 'phonics'];
     const questions = [];
+    // Get 10 random questions for this level from the supported quiz categories
+    const categories = ['grammar', 'vocabulary', 'pronunciation', 'idioms', 'proverbs', 'elaboration', 'imagery'];
 
     for (const category of categories) {
       // Get 2 questions per category (12 total, we'll take first 10)
@@ -6571,6 +6610,15 @@ async function generateDailyQuiz() {
         [level, category]
       );
       questions.push(...categoryQuestions.rows);
+    }
+
+    // If there are not enough questions from each category, fill from any available active question in this level
+    if (questions.length < 10) {
+      const fallbackResult = await pool.query(
+        "SELECT * FROM quiz_questions WHERE level = $1 AND is_active = true AND category != 'phonics' ORDER BY RANDOM() LIMIT $2",
+        [level, 10 - questions.length]
+      );
+      questions.push(...fallbackResult.rows);
     }
 
     // Take first 10 questions
@@ -6594,6 +6642,147 @@ async function generateDailyQuiz() {
     JSON.stringify(quizData.intermediate_questions),
     JSON.stringify(quizData.advanced_questions)
   ]);
+}
+
+const DAILY_QUIZ_QUESTION_COUNT = 10;
+const DAILY_QUIZ_DURATION_SECONDS = 5 * 60;
+const DAILY_QUIZ_BADGE_TYPE = 'daily_quiz_champion';
+const DAILY_QUIZ_BADGE_NAME = '🏆 Quiz Champion';
+const DAILY_QUIZ_BADGE_DESCRIPTION = 'Scored 10/10 in the daily quiz!';
+
+function getQuizLevelColumn(level) {
+  if (level === 'intermediate') return 'intermediate_questions';
+  if (level === 'advanced') return 'advanced_questions';
+  return 'beginner_questions';
+}
+
+function normalizeQuizQuestion(question) {
+  if (!question || typeof question !== 'object') return null;
+  const options = Array.isArray(question.options) ? question.options : [];
+  const id = Number(question.id ?? question.question_id);
+  const category = String(question.category || '').toLowerCase();
+
+  if (!Number.isInteger(id) || options.length !== 4 || category === 'phonics') {
+    return null;
+  }
+
+  return {
+    id,
+    question_text: question.question_text || '',
+    options,
+    category,
+    audio_url: question.audio_url || null,
+    image_url: question.image_url || null
+  };
+}
+
+async function getPreparedDailyQuizQuestions(quizDate, level) {
+  const quizResult = await pool.query(
+    'SELECT beginner_questions, intermediate_questions, advanced_questions FROM daily_quizzes WHERE quiz_date = $1 LIMIT 1',
+    [quizDate]
+  );
+
+  if (quizResult.rows.length === 0) {
+    return [];
+  }
+
+  const row = quizResult.rows[0];
+  const baseQuestions = Array.isArray(row[getQuizLevelColumn(level)])
+    ? row[getQuizLevelColumn(level)].map(normalizeQuizQuestion).filter(Boolean)
+    : [];
+
+  const deduped = [];
+  const seen = new Set();
+  for (const question of baseQuestions) {
+    if (!seen.has(question.id)) {
+      seen.add(question.id);
+      deduped.push(question);
+    }
+  }
+
+  if (deduped.length < DAILY_QUIZ_QUESTION_COUNT) {
+    const excludeIds = deduped.map(q => q.id);
+    const fallbackQuery = excludeIds.length > 0
+      ? `
+        SELECT id, question_text, options, category, audio_url, image_url
+        FROM quiz_questions
+        WHERE level = $1
+          AND is_active = true
+          AND category != 'phonics'
+          AND id <> ALL($2::int[])
+        ORDER BY RANDOM()
+        LIMIT $3
+      `
+      : `
+        SELECT id, question_text, options, category, audio_url, image_url
+        FROM quiz_questions
+        WHERE level = $1
+          AND is_active = true
+          AND category != 'phonics'
+        ORDER BY RANDOM()
+        LIMIT $2
+      `;
+
+    const fallbackParams = excludeIds.length > 0
+      ? [level, excludeIds, DAILY_QUIZ_QUESTION_COUNT - deduped.length]
+      : [level, DAILY_QUIZ_QUESTION_COUNT - deduped.length];
+
+    const fallbackResult = await pool.query(fallbackQuery, fallbackParams);
+    for (const rowQuestion of fallbackResult.rows) {
+      const normalized = normalizeQuizQuestion(rowQuestion);
+      if (normalized && !seen.has(normalized.id)) {
+        seen.add(normalized.id);
+        deduped.push(normalized);
+      }
+    }
+  }
+
+  return deduped.slice(0, DAILY_QUIZ_QUESTION_COUNT);
+}
+
+function createDailyQuizToken(studentId, quizDate, level, questionIds, startedAtMs) {
+  const payload = JSON.stringify({
+    studentId: Number(studentId),
+    quizDate,
+    level,
+    questionIds,
+    startedAtMs
+  });
+  const secret = process.env.DAILY_QUIZ_SECRET || ADMIN_SECRET || 'daily-quiz-secret';
+  const signature = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  return Buffer.from(JSON.stringify({ payload, signature }), 'utf8').toString('base64url');
+}
+
+function verifyDailyQuizToken(token, studentId) {
+  try {
+    const decoded = JSON.parse(Buffer.from(String(token), 'base64url').toString('utf8'));
+    if (!decoded?.payload || !decoded?.signature) {
+      return { valid: false, reason: 'Invalid quiz token' };
+    }
+
+    const secret = process.env.DAILY_QUIZ_SECRET || ADMIN_SECRET || 'daily-quiz-secret';
+    const expected = crypto.createHmac('sha256', secret).update(decoded.payload).digest('hex');
+    if (expected !== decoded.signature) {
+      return { valid: false, reason: 'Quiz token verification failed' };
+    }
+
+    const payload = JSON.parse(decoded.payload);
+    if (Number(payload.studentId) !== Number(studentId)) {
+      return { valid: false, reason: 'Quiz token does not belong to this student' };
+    }
+
+    if (!Array.isArray(payload.questionIds) || payload.questionIds.length !== DAILY_QUIZ_QUESTION_COUNT) {
+      return { valid: false, reason: 'Quiz token is missing question data' };
+    }
+
+    if (!Number.isFinite(payload.startedAtMs)) {
+      return { valid: false, reason: 'Quiz token is missing timing data' };
+    }
+
+    return { valid: true, payload };
+  } catch (err) {
+    return { valid: false, reason: 'Invalid quiz token' };
+  }
 }
 
 // ==================== API ROUTES ====================
@@ -14355,7 +14544,18 @@ app.get('/api/daily-quiz/status', async (req, res) => {
 
     // Check if student already attempted today
     const attemptResult = await pool.query(
-      'SELECT * FROM quiz_attempts WHERE student_id = $1 AND DATE(created_at) = $2 ORDER BY created_at DESC LIMIT 1',
+      `
+        SELECT
+          score,
+          10 AS total_questions,
+          points_awarded AS points_earned,
+          completed_at AS created_at,
+          time_taken_seconds AS time_spent
+        FROM quiz_attempts
+        WHERE student_id = $1 AND quiz_date = $2
+        ORDER BY completed_at DESC
+        LIMIT 1
+      `,
       [studentId, today]
     );
 
@@ -14375,9 +14575,12 @@ app.get('/api/daily-quiz/status', async (req, res) => {
         score: lastAttempt.score,
         total_questions: lastAttempt.total_questions,
         points_earned: lastAttempt.points_earned,
-        created_at: lastAttempt.created_at
+        created_at: lastAttempt.created_at,
+        time_spent: lastAttempt.time_spent,
+        perfect_score: Number(lastAttempt.score) === DAILY_QUIZ_QUESTION_COUNT
       } : null,
-      nextQuizTime
+      nextQuizTime: nextQuizTime ? nextQuizTime.toISOString() : null,
+      maxDurationSeconds: DAILY_QUIZ_DURATION_SECONDS
     });
   } catch (err) {
     console.error('Quiz status error:', err);
@@ -14397,7 +14600,7 @@ app.post('/api/daily-quiz/start', async (req, res) => {
 
     // Check if student already attempted today
     const attemptResult = await pool.query(
-      'SELECT id FROM quiz_attempts WHERE student_id = $1 AND DATE(created_at) = $2',
+      'SELECT id FROM quiz_attempts WHERE student_id = $1 AND quiz_date = $2',
       [studentId, today]
     );
 
@@ -14405,45 +14608,40 @@ app.post('/api/daily-quiz/start', async (req, res) => {
       return res.status(409).json({ error: 'You have already attempted today\'s quiz' });
     }
 
-    // Get today's quiz questions
-    const quizResult = await pool.query(`
-      SELECT dq.*, qq.question_text, qq.options, qq.correct_answer, qq.explanation, qq.category
-      FROM daily_quizzes dq
-      JOIN quiz_questions qq ON dq.question_id = qq.id
-      WHERE dq.quiz_date = $1 AND qq.is_active = true
-      ORDER BY dq.id
-    `, [today]);
-
-    if (quizResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Daily quiz not available yet. Please check back later.' });
-    }
-
     // Get student level (default to beginner if not set)
     const studentResult = await pool.query('SELECT level FROM students WHERE id = $1', [studentId]);
     const studentLevel = studentResult.rows[0]?.level || 'beginner';
 
-    // Filter questions by student level
-    const levelQuestions = quizResult.rows.filter(q => q.level === studentLevel);
-
-    if (levelQuestions.length < 10) {
-      // If not enough questions for this level, get questions from other levels
-      const allQuestions = quizResult.rows;
-      const shuffled = allQuestions.sort(() => 0.5 - Math.random());
-      const questions = shuffled.slice(0, 10);
-    } else {
-      // Use level-specific questions
-      const shuffled = levelQuestions.sort(() => 0.5 - Math.random());
-      var questions = shuffled.slice(0, 10);
+    let questions = await getPreparedDailyQuizQuestions(today, studentLevel);
+    if (questions.length === 0) {
+      await generateDailyQuiz();
+      questions = await getPreparedDailyQuizQuestions(today, studentLevel);
     }
+
+    if (questions.length < DAILY_QUIZ_QUESTION_COUNT) {
+      return res.status(404).json({ error: 'Daily quiz not available yet. Please check back later.' });
+    }
+
+    const startedAtMs = Date.now();
+    const quizToken = createDailyQuizToken(
+      studentId,
+      today,
+      studentLevel,
+      questions.map(q => q.id),
+      startedAtMs
+    );
 
     res.json({
       quiz_date: today,
+      level: studentLevel,
+      started_at: new Date(startedAtMs).toISOString(),
+      max_duration_seconds: DAILY_QUIZ_DURATION_SECONDS,
+      quiz_token: quizToken,
       questions: questions.map(q => ({
-        id: q.question_id,
+        id: q.id,
         question_text: q.question_text,
         options: q.options,
-        category: q.category,
-        explanation: q.explanation
+        category: q.category
       }))
     });
   } catch (err) {
@@ -14455,22 +14653,31 @@ app.post('/api/daily-quiz/start', async (req, res) => {
 // Submit quiz answers
 app.post('/api/daily-quiz/submit', async (req, res) => {
   try {
-    const { answers, timeSpent } = req.body;
+    const { answers, timeSpent, quizToken } = req.body;
     const studentId = req.studentId;
 
     if (!studentId) {
       return res.status(401).json({ error: 'Student authentication required' });
     }
 
-    if (!Array.isArray(answers) || answers.length !== 10) {
+    if (!Array.isArray(answers) || answers.length !== DAILY_QUIZ_QUESTION_COUNT) {
       return res.status(400).json({ error: 'Must provide exactly 10 answers' });
     }
 
     const today = new Date().toISOString().split('T')[0];
+    const tokenCheck = verifyDailyQuizToken(quizToken, studentId);
+    if (!tokenCheck.valid) {
+      return res.status(400).json({ error: tokenCheck.reason });
+    }
+
+    const { payload } = tokenCheck;
+    if (payload.quizDate !== today) {
+      return res.status(400).json({ error: 'Quiz token is not valid for today' });
+    }
 
     // Check if already attempted today
     const existingAttempt = await pool.query(
-      'SELECT id FROM quiz_attempts WHERE student_id = $1 AND DATE(created_at) = $2',
+      'SELECT id FROM quiz_attempts WHERE student_id = $1 AND quiz_date = $2',
       [studentId, today]
     );
 
@@ -14478,58 +14685,86 @@ app.post('/api/daily-quiz/submit', async (req, res) => {
       return res.status(409).json({ error: 'You have already attempted today\'s quiz' });
     }
 
-    // Get today's questions to calculate score
-    const quizResult = await pool.query(`
-      SELECT dq.*, qq.correct_answer
-      FROM daily_quizzes dq
-      JOIN quiz_questions qq ON dq.question_id = qq.id
-      WHERE dq.quiz_date = $1 AND qq.is_active = true
-      ORDER BY dq.id
-    `, [today]);
+    const elapsedSeconds = Math.floor((Date.now() - payload.startedAtMs) / 1000);
+    if (elapsedSeconds > DAILY_QUIZ_DURATION_SECONDS) {
+      return res.status(400).json({ error: 'Time is up. The daily quiz must be completed within 5 minutes.' });
+    }
+    if (elapsedSeconds < 0) {
+      return res.status(400).json({ error: 'Invalid quiz timing data' });
+    }
 
-    if (quizResult.rows.length === 0) {
+    const questionsToCheck = await pool.query(
+      `
+        SELECT id, correct_answer, category
+        FROM quiz_questions
+        WHERE id = ANY($1::int[])
+          AND is_active = true
+          AND category != 'phonics'
+      `,
+      [payload.questionIds]
+    );
+
+    if (questionsToCheck.rows.length !== DAILY_QUIZ_QUESTION_COUNT) {
       return res.status(404).json({ error: 'Quiz not available' });
     }
 
-    // Get student level and filter questions
-    const studentResult = await pool.query('SELECT level FROM students WHERE id = $1', [studentId]);
-    const studentLevel = studentResult.rows[0]?.level || 'beginner';
-    const levelQuestions = quizResult.rows.filter(q => q.level === studentLevel);
-
-    let questionsToCheck;
-    if (levelQuestions.length < 10) {
-      const shuffled = quizResult.rows.sort(() => 0.5 - Math.random());
-      questionsToCheck = shuffled.slice(0, 10);
-    } else {
-      const shuffled = levelQuestions.sort(() => 0.5 - Math.random());
-      questionsToCheck = shuffled.slice(0, 10);
-    }
+    const correctAnswerById = new Map(
+      questionsToCheck.rows.map(question => [Number(question.id), Number(question.correct_answer)])
+    );
 
     // Calculate score
     let correctAnswers = 0;
     answers.forEach((answer, index) => {
-      if (index < questionsToCheck.length && answer === questionsToCheck[index].correct_answer) {
+      const questionId = Number(payload.questionIds[index]);
+      if (Number.isInteger(questionId) && Number(answer) === correctAnswerById.get(questionId)) {
         correctAnswers++;
       }
     });
 
+    const perfectScore = correctAnswers === DAILY_QUIZ_QUESTION_COUNT;
+    const bonusPoints = 0;
     const pointsEarned = correctAnswers * QUIZ_POINT_VALUE;
 
     // Save attempt
     await pool.query(`
-      INSERT INTO quiz_attempts (student_id, quiz_date, answers, score, total_questions, points_earned, time_spent)
+      INSERT INTO quiz_attempts (student_id, quiz_date, level, answers, score, points_awarded, time_taken_seconds)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [studentId, today, JSON.stringify(answers), correctAnswers, 10, pointsEarned, timeSpent || 0]);
+    `, [
+      studentId,
+      today,
+      payload.level || 'beginner',
+      JSON.stringify(answers),
+      correctAnswers,
+      pointsEarned,
+      elapsedSeconds
+    ]);
 
     // Update student points
     await pool.query('UPDATE students SET points = points + $1 WHERE id = $2', [pointsEarned, studentId]);
 
+    let badgeAwarded = false;
+    if (perfectScore) {
+      badgeAwarded = await awardBadge(
+        studentId,
+        DAILY_QUIZ_BADGE_TYPE,
+        DAILY_QUIZ_BADGE_NAME,
+        DAILY_QUIZ_BADGE_DESCRIPTION
+      );
+    }
+
     res.json({
       score: correctAnswers,
-      total_questions: 10,
+      total_questions: DAILY_QUIZ_QUESTION_COUNT,
       points_earned: pointsEarned,
-      time_spent: timeSpent || 0,
-      message: `Great job! You scored ${correctAnswers}/10 and earned ${pointsEarned} points!`
+      base_points: correctAnswers * QUIZ_POINT_VALUE,
+      bonus_points: bonusPoints,
+      badge_awarded: badgeAwarded,
+      badge_name: perfectScore ? DAILY_QUIZ_BADGE_NAME : null,
+      perfect_score: perfectScore,
+      time_spent: elapsedSeconds,
+      message: perfectScore
+        ? `Perfect score! You earned ${pointsEarned} points and unlocked ${DAILY_QUIZ_BADGE_NAME}.`
+        : `Great job! You scored ${correctAnswers}/10 and earned ${pointsEarned} points!`
     });
   } catch (err) {
     console.error('Quiz submission error:', err);
@@ -14546,10 +14781,15 @@ app.get('/api/daily-quiz/history', async (req, res) => {
     }
 
     const result = await pool.query(`
-      SELECT score, total_questions, points_earned, time_spent, created_at
+      SELECT
+        score,
+        10 AS total_questions,
+        points_awarded AS points_earned,
+        time_taken_seconds AS time_spent,
+        completed_at AS created_at
       FROM quiz_attempts
       WHERE student_id = $1
-      ORDER BY created_at DESC
+      ORDER BY completed_at DESC
       LIMIT 30
     `, [studentId]);
 
@@ -14564,7 +14804,7 @@ app.get('/api/daily-quiz/history', async (req, res) => {
 app.get('/api/admin/quiz-questions', async (req, res) => {
   try {
     const { level, category } = req.query;
-    let query = 'SELECT * FROM quiz_questions WHERE is_active = true';
+    let query = "SELECT * FROM quiz_questions WHERE is_active = true AND category != 'phonics'";
     const params = [];
     let paramIndex = 1;
 
@@ -14598,7 +14838,7 @@ app.post('/api/admin/quiz-questions', async (req, res) => {
       return res.status(400).json({ error: 'Invalid level' });
     }
 
-    if (!['grammar', 'vocabulary', 'listening', 'reading', 'pronunciation', 'phonics'].includes(category)) {
+    if (!['grammar', 'vocabulary', 'pronunciation', 'idioms', 'proverbs', 'elaboration', 'imagery'].includes(category)) {
       return res.status(400).json({ error: 'Invalid category' });
     }
 
@@ -14665,12 +14905,14 @@ app.get('/api/admin/quiz-stats/today-questions', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     const result = await pool.query(`
-      SELECT COUNT(*) as count
-      FROM daily_quizzes dq
-      JOIN quiz_questions qq ON dq.question_id = qq.id
-      WHERE dq.quiz_date = $1 AND qq.is_active = true
+      SELECT
+        COALESCE(jsonb_array_length(beginner_questions), 0) +
+        COALESCE(jsonb_array_length(intermediate_questions), 0) +
+        COALESCE(jsonb_array_length(advanced_questions), 0) AS count
+      FROM daily_quizzes
+      WHERE quiz_date = $1
     `, [today]);
-    res.json({ count: parseInt(result.rows[0].count) });
+    res.json({ count: parseInt(result.rows[0]?.count) || 0 });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -14683,7 +14925,7 @@ app.get('/api/admin/quiz-stats/today-attempts', async (req, res) => {
     const result = await pool.query(`
       SELECT COUNT(*) as count
       FROM quiz_attempts
-      WHERE DATE(created_at) = $1
+      WHERE quiz_date = $1
     `, [today]);
     res.json({ count: parseInt(result.rows[0].count) });
   } catch (err) {

@@ -1623,10 +1623,11 @@
                 <select id="questionCategory" required style="width: 100%; padding: 8px; border-radius: 6px; border: none;">
                   <option value="grammar">Grammar</option>
                   <option value="vocabulary">Vocabulary</option>
-                  <option value="listening">Listening</option>
-                  <option value="reading">Reading</option>
                   <option value="pronunciation">Pronunciation</option>
-                  <option value="phonics">Phonics</option>
+                  <option value="idioms">Idioms</option>
+                  <option value="proverbs">Proverbs</option>
+                  <option value="elaboration">Elaboration</option>
+                  <option value="imagery">Imagery</option>
                 </select>
               </div>
             </div>
@@ -1684,10 +1685,11 @@
             <option value="">All Categories</option>
             <option value="grammar">Grammar</option>
             <option value="vocabulary">Vocabulary</option>
-            <option value="listening">Listening</option>
-            <option value="reading">Reading</option>
             <option value="pronunciation">Pronunciation</option>
-            <option value="phonics">Phonics</option>
+            <option value="idioms">Idioms</option>
+            <option value="proverbs">Proverbs</option>
+            <option value="elaboration">Elaboration</option>
+            <option value="imagery">Imagery</option>
           </select>
           <div></div>
         </div>
@@ -14803,10 +14805,11 @@ function getCategoryColor(category) {
   const colors = {
     grammar: '#e53e3e',
     vocabulary: '#38a169',
-    listening: '#3182ce',
-    reading: '#805ad5',
     pronunciation: '#dd6b20',
-    phonics: '#d69e2e'
+    idioms: '#805ad5',
+    proverbs: '#d69e2e',
+    elaboration: '#48bb78',
+    imagery: '#4299e1'
   };
   return colors[category] || '#a0aec0';
 }

@@ -1133,7 +1133,7 @@
       <div id="quizTab" class="tab-content">
         <div class="section">
           <h2 style="color: #B05D9E; margin-bottom: 15px;">🧠 Daily English Quiz</h2>
-          <p style="color: #718096; margin-bottom: 20px;">Test your English skills daily! Answer questions correctly to earn points and climb the leaderboard.</p>
+          <p style="color: #718096; margin-bottom: 20px;">Test your English skills daily. You get 10 questions and one overall 5-minute timer. Each correct answer gives 1 point, and a perfect 10/10 unlocks the Quiz Champion badge.</p>
 
           <!-- Quiz Status -->
           <div id="quizStatus" style="background: linear-gradient(135deg, #e6fffa 0%, #b2f5ea 100%); border: 2px solid #38b2ac; border-radius: 12px; padding: 20px; margin-bottom: 25px; display: none;">
@@ -1154,8 +1154,8 @@
                   <p id="quizTimer" style="color: #718096; margin: 5px 0 0; font-size: 0.9rem;">⏱️ 2:00 remaining</p>
                 </div>
                 <div style="text-align: right;">
-                  <div style="font-size: 1.2rem; font-weight: bold; color: #38a169;">Score: <span id="currentScore">0</span>/10</div>
-                  <div style="font-size: 0.8rem; color: #718096;">Points earned: <span id="pointsEarned">0</span></div>
+                  <div style="font-size: 1.2rem; font-weight: bold; color: #38a169;">Answered: <span id="currentScore">0</span>/10</div>
+                  <div style="font-size: 0.8rem; color: #718096;">Points per correct answer: <span id="pointsEarned">1</span></div>
                 </div>
               </div>
 
@@ -5436,11 +5436,18 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
     let currentQuestionIndex = 0;
     let quizAnswers = [];
     let quizStartTime = null;
-    let questionTimer = null;
-    let timeRemaining = 120; // 2 minutes per question
+    let quizTimerToken = null;
+    let overallQuizTimer = null;
+    let timeRemaining = 300; // 5 minutes for the full quiz
 
     // Initialize quiz when tab is shown
     function initializeQuizTab() {
+      const startCardText = document.querySelector('#startQuizContainer p:not(#quizCooldown)');
+      if (startCardText) {
+        startCardText.textContent = '10 questions - Multiple choice - 5-minute limit - 1 point per correct answer - Perfect 10/10 = Quiz Champion badge';
+      }
+      const timerLabel = document.getElementById('quizTimer');
+      if (timerLabel) timerLabel.textContent = 'TIME 5:00 remaining';
       checkQuizStatus();
       loadQuizHistory();
     }
@@ -5462,7 +5469,6 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
           statusDiv.style.display = 'none';
           cooldownDiv.style.display = 'none';
         } else if (status.lastAttempt) {
-          // Show completed status
           startContainer.style.display = 'none';
           quizContainer.style.display = 'none';
           statusDiv.style.display = 'block';
@@ -5471,13 +5477,15 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
           const score = status.lastAttempt.score;
           const maxScore = status.lastAttempt.total_questions;
           const percentage = Math.round((score / maxScore) * 100);
+          const spent = Number(status.lastAttempt.time_spent || 0);
 
           document.getElementById('quizResult').innerHTML = `
             You scored <strong>${score}/${maxScore}</strong> (${percentage}%) today!<br>
-            Points earned: <strong>${status.lastAttempt.points_earned}</strong> ⭐
+            Points earned: <strong>${status.lastAttempt.points_earned}</strong> points<br>
+            Time taken: <strong>${Math.floor(spent / 60)}:${(spent % 60).toString().padStart(2, '0')}</strong>
+            ${status.lastAttempt.perfect_score ? '<br><strong>Quiz Champion badge unlocked!</strong>' : ''}
           `;
         } else {
-          // Show cooldown message
           startContainer.style.display = 'block';
           quizContainer.style.display = 'none';
           statusDiv.style.display = 'none';
@@ -5485,10 +5493,14 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
 
           const nextQuizTime = new Date(status.nextQuizTime);
           const timeUntil = nextQuizTime - new Date();
-          const hours = Math.floor(timeUntil / (1000 * 60 * 60));
-          const minutes = Math.floor((timeUntil % (1000 * 60 * 60)) / (1000 * 60));
 
-          cooldownDiv.innerHTML = `⏰ Next quiz available in ${hours}h ${minutes}m`;
+          if (!status.nextQuizTime || isNaN(nextQuizTime) || timeUntil <= 0) {
+            cooldownDiv.innerHTML = 'Next quiz available soon. Please refresh in a moment.';
+          } else {
+            const hours = Math.floor(timeUntil / (1000 * 60 * 60));
+            const minutes = Math.floor((timeUntil % (1000 * 60 * 60)) / (1000 * 60));
+            cooldownDiv.innerHTML = `Next quiz available in ${hours}h ${minutes}m`;
+          }
         }
       } catch (error) {
         console.error('Error checking quiz status:', error);
@@ -5504,7 +5516,7 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
 
         if (!response.ok) {
           const error = await response.json();
-          alert('❌ ' + (error.message || 'Failed to start quiz'));
+          alert('Error: ' + (error.message || 'Failed to start quiz'));
           return;
         }
 
@@ -5512,16 +5524,19 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
         currentQuestionIndex = 0;
         quizAnswers = [];
         quizStartTime = Date.now();
+        quizTimerToken = currentQuiz.quiz_token || null;
+        timeRemaining = Number(currentQuiz.max_duration_seconds) || 300;
 
         document.getElementById('startQuizContainer').style.display = 'none';
         document.getElementById('quizContainer').style.display = 'block';
         document.getElementById('quizStatus').style.display = 'none';
+        document.getElementById('quizHistoryContainer').style.display = 'none';
 
         showQuestion(0);
-        startQuestionTimer();
+        startQuizTimer();
       } catch (error) {
         console.error('Error starting quiz:', error);
-        alert('❌ Error starting quiz: ' + error.message);
+        alert('Error starting quiz: ' + error.message);
       }
     }
 
@@ -5535,12 +5550,10 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
       document.getElementById('progressText').textContent = `${index + 1} / ${currentQuiz.questions.length}`;
       document.getElementById('progressBar').style.width = `${((index + 1) / currentQuiz.questions.length) * 100}%`;
 
-      // Update navigation buttons
       document.getElementById('prevBtn').style.display = index > 0 ? 'block' : 'none';
       document.getElementById('nextBtn').style.display = index < currentQuiz.questions.length - 1 ? 'block' : 'none';
       document.getElementById('submitBtn').style.display = index === currentQuiz.questions.length - 1 ? 'block' : 'none';
 
-      // Show options
       const optionsContainer = document.getElementById('optionsContainer');
       optionsContainer.innerHTML = question.options.map((option, optIndex) => {
         const isSelected = quizAnswers[index] === optIndex;
@@ -5566,7 +5579,6 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
     function nextQuestion() {
       if (currentQuestionIndex < currentQuiz.questions.length - 1) {
         showQuestion(currentQuestionIndex + 1);
-        resetQuestionTimer();
       }
     }
 
@@ -5574,55 +5586,40 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
     function previousQuestion() {
       if (currentQuestionIndex > 0) {
         showQuestion(currentQuestionIndex - 1);
-        resetQuestionTimer();
       }
     }
 
-    // Update score display
+    // Update progress display
     function updateScore() {
-      let correct = 0;
-      quizAnswers.forEach((answer, index) => {
-        if (answer === currentQuiz.questions[index].correct_answer) {
-          correct++;
-        }
-      });
-
-      document.getElementById('currentScore').textContent = correct;
-      document.getElementById('pointsEarned').textContent = correct; // 1 point per correct answer
+      const answeredCount = quizAnswers.filter(answer => Number.isInteger(answer)).length;
+      document.getElementById('currentScore').textContent = answeredCount;
+      document.getElementById('pointsEarned').textContent = '1';
     }
 
     // Timer functions
-    function startQuestionTimer() {
-      timeRemaining = 120;
+    function startQuizTimer() {
+      clearInterval(overallQuizTimer);
       updateTimerDisplay();
 
-      questionTimer = setInterval(() => {
+      overallQuizTimer = setInterval(() => {
         timeRemaining--;
         updateTimerDisplay();
 
         if (timeRemaining <= 0) {
-          clearInterval(questionTimer);
-          // Auto-advance or handle timeout
-          if (currentQuestionIndex < currentQuiz.questions.length - 1) {
-            nextQuestion();
-          } else {
-            submitQuiz();
-          }
+          clearInterval(overallQuizTimer);
+          overallQuizTimer = null;
+          alert('Time is up. Your quiz will be submitted now.');
+          submitQuiz(true);
         }
       }, 1000);
-    }
-
-    function resetQuestionTimer() {
-      clearInterval(questionTimer);
-      startQuestionTimer();
     }
 
     function updateTimerDisplay() {
       const minutes = Math.floor(timeRemaining / 60);
       const seconds = timeRemaining % 60;
-      document.getElementById('quizTimer').textContent = `⏱️ ${minutes}:${seconds.toString().padStart(2, '0')} remaining`;
+      document.getElementById('quizTimer').textContent = `TIME ${minutes}:${seconds.toString().padStart(2, '0')} remaining`;
 
-      if (timeRemaining < 30) {
+      if (timeRemaining <= 60) {
         document.getElementById('quizTimer').style.color = '#e53e3e';
       } else {
         document.getElementById('quizTimer').style.color = '#718096';
@@ -5630,8 +5627,9 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
     }
 
     // Submit the completed quiz
-    async function submitQuiz() {
-      clearInterval(questionTimer);
+    async function submitQuiz(isAutoSubmit = false) {
+      clearInterval(overallQuizTimer);
+      overallQuizTimer = null;
 
       try {
         const response = await fetch('/api/daily-quiz/submit', {
@@ -5639,7 +5637,8 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             answers: quizAnswers,
-            timeSpent: Math.floor((Date.now() - quizStartTime) / 1000)
+            timeSpent: Math.floor((Date.now() - quizStartTime) / 1000),
+            quizToken: quizTimerToken
           })
         });
 
@@ -5648,11 +5647,16 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
           showQuizResult(result);
         } else {
           const error = await response.json();
-          alert('❌ ' + (error.message || 'Failed to submit quiz'));
+          if (isAutoSubmit && error.message && error.message.includes('Time is up')) {
+            checkQuizStatus();
+            loadQuizHistory();
+          } else {
+            alert('Error: ' + (error.message || 'Failed to submit quiz'));
+          }
         }
       } catch (error) {
         console.error('Error submitting quiz:', error);
-        alert('❌ Error submitting quiz: ' + error.message);
+        alert('Error submitting quiz: ' + error.message);
       }
     }
 
@@ -5664,15 +5668,14 @@ function setPortalDbLoading(isLoading, message = 'Loading classes from database.
       const percentage = Math.round((result.score / result.total_questions) * 100);
       document.getElementById('quizResult').innerHTML = `
         You scored <strong>${result.score}/${result.total_questions}</strong> (${percentage}%)!<br>
-        Points earned: <strong>${result.points_earned}</strong> ⭐<br>
+        Points earned: <strong>${result.points_earned}</strong> points<br>
         Time taken: <strong>${Math.floor(result.time_spent / 60)}:${(result.time_spent % 60).toString().padStart(2, '0')}</strong>
+        ${result.perfect_score ? `<br><strong>${result.badge_name || 'Quiz Champion'} badge unlocked!</strong>` : ''}
       `;
 
-      // Refresh quiz status and history
       checkQuizStatus();
       loadQuizHistory();
     }
-
     // Load quiz history
     async function loadQuizHistory() {
       try {
